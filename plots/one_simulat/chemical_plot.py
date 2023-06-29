@@ -315,12 +315,12 @@ def main():
            chem_dsl = chem_dsl, chem_dsc = chem_dsc, chem_rct = chem_rct, \
            out_bin = out_bin_chem)
 
-    data = netcdf.netcdf_file("test_plot_chem.nc", "r")
+    data = netcdf.netcdf_file("test_plot_chem_closed.nc", "r")
 
-    plot_chem(data, output_folder = "../outputs", output_title = "/test_plot_chem_")
+    plot_chem(data, output_folder = "../outputs", output_title = "/test_plot_chem_closed")
 
-    netcdf.close()
-    subprocess.call(["rm", "test_plot_chem.nc"])
+    #netcdf.close()
+    subprocess.call(["rm", "test_plot_chem_closed.nc"])
 
 if __name__ == '__main__':
     main()

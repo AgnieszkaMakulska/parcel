@@ -79,7 +79,7 @@ def thesis_profiles(fnc, output_folder="../outputs"):
 def main(dt=1):
     # running parcel model for different ways to solve for pressure  ...            
     outfile = "thesis_plot.nc"
-    parcel(dt=dt, outfreq = 10, outfile=outfile)
+    parcel(dt=dt, outfreq = 10, outfile=outfile, z_max=1000)
     fnc = netcdf.netcdf_file(outfile)
     thesis_profiles(fnc)
     fnc.close()

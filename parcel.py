@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+sys.path.append('/home/agnieszka/usr/lib/python3/dist-packages/')
 
 from argparse import ArgumentParser, RawTextHelpFormatter
 
@@ -88,6 +89,7 @@ def _micro_init(aerosol, opts, state, info):
   opts_init.sedi_switch = False
   opts_init.coal_switch = False
 
+
   # switching on chemistry if either dissolving, dissociation or reactions are chosen
   opts_init.chem_switch = False
   if opts["chem_dsl"] or opts["chem_dsc"] or opts["chem_rct"]:
@@ -127,9 +129,9 @@ def _micro_step(micro, state, info, opts, it, fout):
     ambient_chem = dict((v, state[k]) for k,v in _Chem_g_id.items())
 
   # call libcloudphxx microphysics
-  micro.step_sync(libopts, state["th_d"], state["r_v"], state["rhod"], ambient_chem=ambient_chem)
-  micro.step_async(libopts)
-
+  micro.step_sync(libopts, state["th_d"], state["r_v"], state["rhod"], ambient_chem=ambient_chem) #processes that alter eulerian fields (i.e. phase changes)
+  micro.step_async(libopts) #processes that don't alter eulerian fields (transport, sedimentation, coalescence)
+ 
   # update state after microphysics (needed for below update for chemistry)
   _stats(state, info)
 
@@ -174,6 +176,18 @@ def _output_bins(fout, t, micro, opts, spectra):
           # calculate chemistry
           micro.diag_chem(_Chem_a_id[vm])
           fout.variables[dim+'_'+vm][int(t), int(bin)] = np.frombuffer(micro.outbuf())
+    micro.diag_rw_ge_rc()                                                             
+    micro.diag_wet_mom(0)
+    fout.variables['rw_ge_rc_mom0'][int(t)] = np.frombuffer(micro.outbuf())     #!!!!!!!!!!!!!!!!!!!!!!
+    micro.diag_rw_ge_rc()
+    micro.diag_wet_mom(3)
+    fout.variables['rw_ge_rc_mom3'][int(t)] = np.frombuffer(micro.outbuf())
+    micro.diag_RH_ge_Sc()
+    micro.diag_wet_mom(0)
+    fout.variables['RH_ge_Sc_mom0'][int(t)] = np.frombuffer(micro.outbuf())
+
+
+
 
 def _output_init(micro, opts, spectra):
   # file & dimensions
@@ -191,6 +205,7 @@ def _output_init(micro, opts, spectra):
     fout.createVariable(tmp, 'd', (name,))
     fout.variables[tmp].unit = "m"
     fout.variables[tmp].description = "bin width"
+
 
     if dct["lnli"] == 'log':
       from math import exp, log
@@ -226,6 +241,13 @@ def _output_init(micro, opts, spectra):
     fout.createVariable(var_name, 'd', ('t',))
     fout.variables[var_name].unit = unit
 
+  fout.createVariable('rw_ge_rc_mom0', 'd', ('t',))               #!!!!!!!!!!!!!!!
+  fout.variables['rw_ge_rc_mom0'].unit = "(kg of dry air)^-1" 
+  fout.createVariable('rw_ge_rc_mom3', 'd', ('t',))
+  fout.variables['rw_ge_rc_mom3'].unit = "m^3/(kg of dry air)"
+  fout.createVariable('RH_ge_Sc_mom0', 'd', ('t',))               #!!!!!!!!!!!!!!!
+  fout.variables['RH_ge_Sc_mom0'].unit = "(kg of dry air)^-1" 
+
   return fout
 
 def _output_save(fout, state, rec):
@@ -239,6 +261,7 @@ def _save_attrs(fout, dictnr):
 def _output(fout, opts, micro, state, rec, spectra):
   _output_bins(fout, rec, micro, opts, spectra)
   _output_save(fout, state, rec)
+  
 
 def _p_hydro_const_rho(dz, p, rho):
   # hydrostatic pressure assuming constatnt density
@@ -249,11 +272,12 @@ def _p_hydro_const_th_rv(z_lev, p_0, th_std, r_v, z_0=0.):
   return common.p_hydro(z_lev, th_std, r_v, z_0, p_0)
 
 def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
-  r_0=-1., RH_0=-1., #if none specified, the default will be r_0=.022,
+  #r_0=-1., RH_0=-1., #if none specified, the default will be r_0=.022,
+  r_0=0.022, RH_0=-1.,
   outfile="test.nc",
   pprof="pprof_piecewise_const_rhod",
-  outfreq=100, sd_conc=64,
-  aerosol = '{"ammonium_sulfate": {"kappa": 0.61, "mean_r": [0.02e-6], "gstdev": [1.4], "n_tot": [60.0e6]}}',
+  outfreq=100, sd_conc=100,
+  aerosol = '{"ammonium_sulfate": {"kappa": 1.28, "mean_r": [0.02e-6], "gstdev": [1.4], "n_tot": [60.0e6]}}',
   out_bin = '{"radii": {"rght": 0.0001, "moms": [0], "drwt": "wet", "nbin": 1, "lnli": "log", "left": 1e-09}}',
   SO2_g = 0., O3_g = 0., H2O2_g = 0., CO2_g = 0., HNO3_g = 0., NH3_g = 0.,
   chem_dsl = False, chem_dsc = False, chem_rct = False,
@@ -273,7 +297,7 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
     r_0     (Optional[float]):    initial water vapour mass mixing ratio [kg/kg]
     RH_0    (Optional[float]):    initial relative humidity
     outfile (Optional[string]):   output netCDF file name
-    outfreq (Optional[int]):      output interval (in number of time steps)
+    outfreq (Optional[int]):      output interval (in number of time steps) #dla dłuższych kroków czasowych powinien być krótszy
     pprof   (Optional[string]):   method to calculate pressure profile used to calculate
                                   dry air density that is used by the super-droplet scheme
                                   valid options are: pprof_const_th_rv, pprof_const_rhod, pprof_piecewise_const_rhod
@@ -297,7 +321,8 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
     out_bin (Optional[json str]): dict of dicts defining spectrum diagnostics, e.g.:
 
                                   {"radii": {"rght": 0.0001,  "moms": [0],          "drwt": "wet", "nbin": 26, "lnli": "log", "left": 1e-09},
-                                   "cloud": {"rght": 2.5e-05, "moms": [0, 1, 2, 3], "drwt": "wet", "nbin": 49, "lnli": "lin", "left": 5e-07}}
+                                   "cloud": {"rght": 2.5e-05, "moms": [0, 1, 2, 3], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 5e-07}}
+                                    
                                   will generate five output spectra:
                                   - 0-th spectrum moment for 26 bins spaced logarithmically between 0 and 1e-4 m for dry radius
                                   - 0,1,2 & 3-rd moments for 49 bins spaced linearly between .5e-6 and 25e-6 for wet radius

@@ -2,6 +2,7 @@ import sys, os, subprocess
 sys.path.insert(0, "../")
 sys.path.insert(0, "./")
 sys.path.insert(0, "../../")
+sys.path.insert(0, "../../../")
 from scipy.io import netcdf
 import numpy as np
 
