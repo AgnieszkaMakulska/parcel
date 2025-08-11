@@ -4,7 +4,7 @@ sys.path.insert(0, "./")
 sys.path.insert(0, "plots/one_simulat/")
 
 from scipy.io import netcdf
-from scipy.integrate import trapz
+from scipy.integrate import trapezoid
 
 import numpy as np
 import math
@@ -66,9 +66,9 @@ def analytic_moms_for_lognormal(mom, n_tot, mean_r, gstdev):
 def trapez_moms(x_arg, y_arg, mom):
     """ Returns numerically integrated moments """
     if mom == 0:
-        ret = trapz(y_arg, x_arg)
+        ret = trapezoid(y_arg, x_arg)
     else:
-        ret = trapz(y_arg * x_arg**mom, x_arg)
+        ret = trapezoid(y_arg * x_arg**mom, x_arg)
     return ret
 
 def test_dry_moments(data):
