@@ -111,10 +111,35 @@ def _micro_init_blk_1m(opts, state, info):
     # create options
     opts_init = blk_1m.opts_t()
     
-    # switch off unnecessary processes
-    opts_init.accr = False  # no rain accretion
-    opts_init.conv = False  # no autoconversion
-    opts_init.sedi = False  # no sedimentation
+    # opts_init.accr = False  # no rain accretion
+    # opts_init.conv = False  # no autoconversion
+    # opts_init.sedi = False  # no sedimentation
+    opts_init.homA1 = False # no ice proceesses
+    opts_init.homA2 = False
+    opts_init.hetA = False
+    opts_init.hetB = False 
+    opts_init.depA = False 
+    opts_init.depB = False
+    opts_init.rimA = False
+    opts_init.rimB = False 
+    opts_init.melA = False
+    opts_init.melB = False
+    
+    # sanity check
+    _stats(state, info)
+    if (state["RH"] > 1): 
+        raise Exception("Please supply initial T,p,r_v below supersaturation")
+        
+    return opts_init
+
+def _micro_init_blk_1m_ice(opts, state, info):
+    """Initialize the bulk ice scheme with basic options"""
+    # create options
+    opts_init = blk_1m.opts_t()
+    
+    # opts_init.accr = False  # no rain accretion
+    # opts_init.conv = False  # no autoconversion
+    # opts_init.sedi = False  # no sedimentation
     
     # sanity check
     _stats(state, info)
@@ -170,29 +195,114 @@ def _micro_step_blk_1m(micro_opts, state, info, opts, it):
     # get state variables as numpy arrays
     rhod = np.asarray([state["rhod"][0]], dtype=np.float64)
     th_d = np.asarray([state["th_d"][0]], dtype=np.float64)
+    p = np.asarray([state["p"]], dtype=np.float64)
     rv = np.asarray([state["r_v"][0]], dtype=np.float64)
-    
-    # initialize mixing ratios as numpy arrays
-    rc = np.zeros(1, dtype=np.float64)  # cloud water mixing ratio
-    rr = np.zeros(1, dtype=np.float64)  # rain water mixing ratio
+    rc = np.asarray([state["rc"][0]], dtype=np.float64)
+    rr = np.asarray([state["rr"][0]], dtype=np.float64)
+    dot_th_d = np.zeros_like(th_d)
+    dot_rv = np.zeros_like(rv)
+    dot_rc = np.zeros_like(rc)
+    dot_rr = np.zeros_like(rr)
 
-    # Apply saturation adjustment with correct signature:
-    # adj_cellwise(opts_t, ndarray, ndarray, ndarray, ndarray, ndarray, double)
-    blk_1m.adj_cellwise(
-        micro_opts,  # options struct
-        rhod,        # dry air density array
-        th_d,        # dry potential temperature array
-        rv,         # water vapor mixing ratio array
-        rc,         # cloud water mixing ratio array
-        rr,         # rain water mixing ratio array
-        opts["dt"]  # timestep as double
+
+    blk_1m.adj_cellwise_nwtrph(
+      micro_opts,  # options struct
+      p,        # pressure array
+      th_d,        # dry potential temperature array
+      rv,         # water vapor mixing ratio array
+      rc,         # cloud water mixing ratio array
+      opts["dt"]  # timestep as double
+  )
+    blk_1m.rhs_cellwise_nwtrph(
+      micro_opts,
+      dot_th_d,
+      dot_rv,
+      dot_rc,
+      dot_rr,
+      rhod,
+      p,
+      th_d,
+      rv,
+      rc,
+      rr,
+      opts["dt"]
     )
-    
+
+    th_d += dot_th_d * opts["dt"]
+    rv += dot_rv * opts["dt"]
+    rc += dot_rc * opts["dt"]
+    rr += dot_rr * opts["dt"]
+
     # Update state dictionary with modified values
     state["r_v"][0] = rv[0]
     state["th_d"][0] = th_d[0]
-    state["rc"] = rc[0]  # store cloud water
-    state["rr"] = rr[0]  # store rain water
+    state["rc"] = np.array([rc[0]])
+    state["rr"] = np.array([rr[0]])
+    
+    # Update thermodynamic state
+    _stats(state, info)
+
+
+def _micro_step_blk_1m_ice(micro_opts, state, info, opts, it):
+    
+    # get state variables as numpy arrays
+    rhod = np.asarray([state["rhod"][0]], dtype=np.float64)
+    th_d = np.asarray([state["th_d"][0]], dtype=np.float64)
+    p = np.asarray([state["p"]], dtype=np.float64)
+    rv = np.asarray([state["r_v"][0]], dtype=np.float64)
+    rc = np.asarray([state["rc"][0]], dtype=np.float64)
+    rr = np.asarray([state["rr"][0]], dtype=np.float64)
+    ria = np.asarray([state["ria"][0]], dtype=np.float64)
+    rib = np.asarray([state["rib"][0]], dtype=np.float64)
+    dot_th_d = np.zeros_like(th_d)
+    dot_rv = np.zeros_like(rv)
+    dot_rc = np.zeros_like(rc)
+    dot_rr = np.zeros_like(rr)
+    dot_ria = np.zeros_like(ria)
+    dot_rib = np.zeros_like(rib)
+
+
+    blk_1m.adj_cellwise_nwtrph(
+      micro_opts,  # options struct
+      p,        # pressure array
+      th_d,        # dry potential temperature array
+      rv,         # water vapor mixing ratio array
+      rc,         # cloud water mixing ratio array
+      opts["dt"]  # timestep as double
+  )
+    blk_1m.rhs_cellwise_nwtrph_ice(
+      micro_opts,
+      dot_th_d,
+      dot_rv,
+      dot_rc,
+      dot_rr,
+      dot_ria,
+      dot_rib,
+      rhod,
+      p,
+      th_d,
+      rv,
+      rc,
+      rr,
+      ria,
+      rib,
+      opts["dt"]
+    )
+
+    th_d += dot_th_d * opts["dt"]
+    rv += dot_rv * opts["dt"]
+    rc += dot_rc * opts["dt"]
+    rr += dot_rr * opts["dt"]
+    ria += dot_ria * opts["dt"]
+    rib += dot_rib * opts["dt"]
+
+    # Update state dictionary with modified values
+    state["r_v"][0] = rv[0]
+    state["th_d"][0] = th_d[0]
+    state["rc"] = np.array([rc[0]])
+    state["rr"] = np.array([rr[0]])
+    state["ria"] = np.array([ria[0]])
+    state["rib"] = np.array([rib[0]])
     
     # Update thermodynamic state
     _stats(state, info)
@@ -300,6 +410,37 @@ def _output_init_blk_1m(opts):
         "r_v": ("kg/kg",),
         "rc": ("kg/kg",),
         "rr": ("kg/kg",),
+        "th_d": ("K",),
+        "rhod": ("kg/m3",),
+        "p": ("Pa",),
+        "T": ("K",),
+        "RH": ("1",)
+    }
+    
+    for var, (unit,) in vars_units.items():
+        fout.createVariable(var, 'd', ('t',))
+        fout.variables[var].unit = unit
+        
+    return fout
+
+def _output_init_blk_1m_ice(opts):
+    """Initialize output file for bulk ice microphysics scheme
+    
+    Args:
+        opts: dictionary with model options
+    """
+    fout = netcdf.netcdf_file(opts["outfile"], 'w')
+    fout.createDimension('t', None)
+    
+    # Basic variables with their units
+    vars_units = {
+        "z": ("m",), 
+        "t": ("s",),
+        "r_v": ("kg/kg",),
+        "rc": ("kg/kg",),
+        "rr": ("kg/kg",),
+        "ria": ("kg/kg",),
+        "rib": ("kg/kg",),
         "th_d": ("K",),
         "rhod": ("kg/m3",),
         "p": ("Pa",),
@@ -447,6 +588,16 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
     "T" : None, "RH" : None
   }
 
+  if scheme == "blk_1m":
+    state["rc"] = np.array([0.0])  # initial cloud water
+    state["rr"] = np.array([0.0])  # initial rain water
+
+  if scheme == "blk_1m_ice":
+    state["rc"] = np.array([0.0])  # initial cloud water
+    state["rr"] = np.array([0.0])  # initial rain water
+    state["ria"] = np.array([0.0])  # initial ice A
+    state["rib"] = np.array([0.0])  # initial ice B
+
   if opts["chem_dsl"] or opts["chem_dsc"] or opts["chem_rct"]:
     for key in _Chem_g_id.keys():
       state.update({ key : np.array([opts[key]])})
@@ -461,8 +612,11 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
   elif scheme == "blk_1m":
       micro = _micro_init_blk_1m(opts, state, info)
       fout = _output_init_blk_1m(opts)
+  elif scheme == "blk_1m_ice":
+      micro = _micro_init_blk_1m_ice(opts, state, info)
+      fout = _output_init_blk_1m_ice(opts)
   else:
-      raise ValueError("Unknown scheme type. Use 'lgrngn' or 'blk_1m'")
+      raise ValueError("Unknown scheme type. Use 'lgrngn', 'blk_1m' or 'blk_1m_ice'.")
     
   with fout:
       # adding chem state vars - only for lgrngn scheme
@@ -477,11 +631,12 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
       # t=0 : init & save
       if scheme == "lgrngn":
           _output(fout, opts, micro, state, 0, spectra)
-      elif scheme == "blk_1m":
+      elif scheme == "blk_1m" or scheme == "blk_1m_ice":
           _output_save(fout, state, 0)  # simpler output for blk_1m
 
       # timestepping
-      for it in range(1,nt+1):
+      for it in range(1, nt+1):
+        print("Timestep", it, "/", nt)
         # diagnostics
         # the reasons to use analytic solution:
         # - independent of dt
@@ -526,6 +681,8 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
           _micro_step(micro, state, info, opts, it, fout)
         elif scheme == "blk_1m":
           _micro_step_blk_1m(micro, state, info, opts, it)
+        elif scheme == "blk_1m_ice":
+          _micro_step_blk_1m_ice(micro, state, info, opts, it)
 
         # TODO: only if user wants to stop @ RH_max
         #if (state["RH"] < info["RH_max"]): break
@@ -536,7 +693,7 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
           rec = it/outfreq
           if scheme == "lgrngn":
             _output(fout, opts, micro, state, rec, spectra)
-          elif scheme == "blk_1m":
+          elif scheme == "blk_1m" or scheme == "blk_1m_ice":
             _output_save(fout, state, rec)
 
       _save_attrs(fout, info)
