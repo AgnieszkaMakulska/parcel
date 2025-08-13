@@ -472,7 +472,7 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
   scheme="lgrngn", # parameter to select scheme
   sd_conc=64,
   aerosol = '{"ammonium_sulfate": {"kappa": 0.61, "mean_r": [0.02e-6], "gstdev": [1.4], "n_tot": [60.0e6]}}',
-  out_bin = '{"radii": {"rght": 0.0001, "moms": [0], "drwt": "wet", "nbin": 1, "lnli": "log", "left": 1e-09}}',
+  out_bin = '{"radii": {"rght": 0.01, "moms": [0], "drwt": "wet", "nbin": 1, "lnli": "log", "left": 1e-15}}',
   SO2_g = 0., O3_g = 0., H2O2_g = 0., CO2_g = 0., HNO3_g = 0., NH3_g = 0.,
   chem_dsl = False, chem_dsc = False, chem_rct = False,
   chem_rho = 1.8e3,
@@ -566,7 +566,7 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
     r_0 = common.eps * opts["RH_0"] * common.p_vs(T_0) / (p_0 - opts["RH_0"] * common.p_vs(T_0))
 
   # sanity checks for arguments
-  _arguments_checking(opts, spectra, aerosol)
+  _arguments_checking(opts, spectra, aerosol, scheme)
 
   th_0 = T_0 * (common.p_1000 / p_0)**(common.R_d / common.c_pd)
   nt = int(z_max / (w * dt))
@@ -697,9 +697,9 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
             rec = it/outfreq
             _output(fout, opts, micro, state, rec, spectra)
 
-def _arguments_checking(opts, spectra, aerosol):
-  if opts["T_0"] < 273.15:
-    raise Exception("temperature should be larger than 0C - microphysics works only for warm clouds")
+def _arguments_checking(opts, spectra, aerosol, scheme):
+  if opts["T_0"] < 273.15 and scheme != "blk_1m_ice":
+    raise Exception("temperature should be larger than 0C for schemes other than blk_1m_ice")
   elif ((opts["r_0"] >= 0) and (opts["RH_0"] >= 0)):
     raise Exception("both r_0 and RH_0 specified, please use only one")
   if opts["w"] < 0:
