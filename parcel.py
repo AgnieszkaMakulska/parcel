@@ -107,14 +107,15 @@ def _micro_init(aerosol, opts, state, info):
   return micro
 
 def _micro_init_blk_1m(opts, state, info):
-    """Initialize the bulk scheme with basic options"""
-    # create options
+    """Initialize options for bulk microphysics scheme"""
     opts_init = blk_1m.opts_t()
     
-    # opts_init.accr = False  # no rain accretion
-    # opts_init.conv = False  # no autoconversion
-    # opts_init.sedi = False  # no sedimentation
-    opts_init.homA1 = False # no ice proceesses
+    opts_init.accr = False  # no rain accretion
+    opts_init.conv = False  # no autoconversion
+    opts_init.sedi = False  # no sedimentation
+
+    # no ice proceesses:
+    opts_init.homA1 = False
     opts_init.homA2 = False
     opts_init.hetA = False
     opts_init.hetB = False 
@@ -133,13 +134,17 @@ def _micro_init_blk_1m(opts, state, info):
     return opts_init
 
 def _micro_init_blk_1m_ice(opts, state, info):
-    """Initialize the bulk ice scheme with basic options"""
-    # create options
+    """Initialize options for bulk microphysics scheme with ice processes"""
     opts_init = blk_1m.opts_t()
     
-    # opts_init.accr = False  # no rain accretion
-    # opts_init.conv = False  # no autoconversion
-    # opts_init.sedi = False  # no sedimentation
+    opts_init.sedi = False  # no sedimentation
+    opts_init.accr = False  # no rain accretion
+    opts_init.conv = False  # no autoconversion
+
+    # no collisions for ice:
+    opts_init.hetB = False 
+    opts_init.rimA = False
+    opts_init.rimB = False 
     
     # sanity check
     _stats(state, info)
@@ -183,22 +188,14 @@ def _micro_step(micro, state, info, opts, it, fout):
       state[id_str.replace('_g', '_a')] = np.frombuffer(micro.outbuf())[0]
 
 def _micro_step_blk_1m(micro_opts, state, info, opts, it):
-    """Execute one timestep of bulk microphysics
-    
-    Args:
-        micro_opts: options for bulk scheme (blk_1m.opts_t)
-        state: dictionary with model state variables
-        info: dictionary with model metadata
-        opts: dictionary with model options
-        it: current timestep number
-    """
+    """Microphysics step for bulk microphysics scheme"""
     # get state variables as numpy arrays
     rhod = np.asarray([state["rhod"][0]], dtype=np.float64)
     th_d = np.asarray([state["th_d"][0]], dtype=np.float64)
     p = np.asarray([state["p"]], dtype=np.float64)
     rv = np.asarray([state["r_v"][0]], dtype=np.float64)
-    rc = np.asarray([state["rc"][0]], dtype=np.float64)
-    rr = np.asarray([state["rr"][0]], dtype=np.float64)
+    rc = np.asarray([state["rc"][0]])
+    rr = np.asarray([state["rr"][0]])
     dot_th_d = np.zeros_like(th_d)
     dot_rv = np.zeros_like(rv)
     dot_rc = np.zeros_like(rc)
@@ -206,13 +203,14 @@ def _micro_step_blk_1m(micro_opts, state, info, opts, it):
 
 
     blk_1m.adj_cellwise_nwtrph(
-      micro_opts,  # options struct
-      p,        # pressure array
-      th_d,        # dry potential temperature array
-      rv,         # water vapor mixing ratio array
-      rc,         # cloud water mixing ratio array
-      opts["dt"]  # timestep as double
+      micro_opts,
+      p,
+      th_d,
+      rv,
+      rc,
+      opts["dt"]
   )
+    
     blk_1m.rhs_cellwise_nwtrph(
       micro_opts,
       dot_th_d,
@@ -395,11 +393,7 @@ def _output_init(micro, opts, spectra):
   return fout
 
 def _output_init_blk_1m(opts):
-    """Initialize output file for bulk microphysics scheme
-    
-    Args:
-        opts: dictionary with model options
-    """
+    """Initialize output file for bulk microphysics scheme"""
     fout = netcdf.netcdf_file(opts["outfile"], 'w')
     fout.createDimension('t', None)
     
@@ -424,11 +418,7 @@ def _output_init_blk_1m(opts):
     return fout
 
 def _output_init_blk_1m_ice(opts):
-    """Initialize output file for bulk ice microphysics scheme
-    
-    Args:
-        opts: dictionary with model options
-    """
+    """Initialize output file for bulk ice microphysics scheme"""
     fout = netcdf.netcdf_file(opts["outfile"], 'w')
     fout.createDimension('t', None)
     
@@ -636,7 +626,6 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
 
       # timestepping
       for it in range(1, nt+1):
-        print("Timestep", it, "/", nt)
         # diagnostics
         # the reasons to use analytic solution:
         # - independent of dt
