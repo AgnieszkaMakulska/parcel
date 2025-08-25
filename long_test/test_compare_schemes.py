@@ -7,6 +7,15 @@ from parcel import parcel
 from scipy.io import netcdf
 import matplotlib.pyplot as plt
 
+"""
+This test runs the parcel model using three different microphysics schemes:
+- lgrngn (Lagrangian particle-based)
+- blk_1m (bulk warm)
+- blk_1m_ice (bulk ice)
+
+It compares the evolution of rv, th_d, and total condensed water in different schemes. 
+"""
+
 def run_scheme(scheme, outfile):
     args = dict(
         dt=0.1,

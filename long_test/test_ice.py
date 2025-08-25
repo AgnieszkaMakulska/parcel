@@ -1,3 +1,8 @@
+"""
+This test runs the parcel model using blk_1m_ice microphysics scheme.
+It checks that the final values of ria and rc match their reference values (are consistent in each run).
+"""
+
 import sys
 sys.path.insert(0, "../")
 sys.path.insert(0, "./")
