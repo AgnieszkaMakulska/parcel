@@ -1,12 +1,3 @@
-import sys
-sys.path.insert(0, "../")
-sys.path.insert(0, "./")
-
-import numpy as np
-from parcel import parcel
-from scipy.io import netcdf
-import matplotlib.pyplot as plt
-
 """
 This test runs the parcel model using three different microphysics schemes:
 - lgrngn (Lagrangian particle-based)
@@ -16,18 +7,25 @@ This test runs the parcel model using three different microphysics schemes:
 It compares the evolution of rv, th_d, and total condensed water in different schemes. 
 """
 
+import sys
+sys.path.insert(0, "../")
+sys.path.insert(0, "./")
+
+import numpy as np
+from parcel import parcel
+from scipy.io import netcdf
+import matplotlib.pyplot as plt
+
 def run_scheme(scheme, outfile):
     args = dict(
         dt=0.1,
         z_max=800,
         w=1.0,
         T_0=300,
-        p_0=101300,
         r_0=0.022,
         outfile=outfile,
         outfreq=50,
         scheme=scheme,
-        aerosol='{"ammonium_sulfate": {"kappa": 0.61, "mean_r": [0.02e-6], "gstdev": [1.4], "n_tot": [60.0e6]}}',
         out_bin='{"radius": {"rght": 1, "moms": [3], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 1e-15}}'
     )
     parcel(**args)

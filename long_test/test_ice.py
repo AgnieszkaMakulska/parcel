@@ -16,7 +16,6 @@ def test_bulk_ice():
         z_max=500,
         w=1.0,
         T_0=273,
-        p_0=101300,
         RH_0 = 1,
         outfile="test_bulk_ice.nc",
         outfreq=100,
