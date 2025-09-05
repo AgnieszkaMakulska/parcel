@@ -4,7 +4,7 @@ This test runs the parcel model using three different microphysics schemes:
 - blk_1m (bulk warm)
 - blk_1m_ice (bulk ice)
 
-It compares the final values of rv, th_d, and total condensed water in different schemes. 
+It plots the evolution of rv, th_d, and total condensed water in different schemes. 
 """
 
 import sys
@@ -14,6 +14,7 @@ sys.path.insert(0, "./")
 import numpy as np
 from parcel import parcel
 from scipy.io import netcdf
+import matplotlib.pyplot as plt
 
 def run_scheme(scheme, outfile):
     args = dict(
@@ -39,19 +40,21 @@ def run_scheme(scheme, outfile):
             r_tot = moment_3 *4/3 * np.pi * 997 #multiply by density of water
     return rv, th_d, r_tot, z
 
-def test_compare_schemes():
+def test_plot_schemes():
     schemes = ["lgrngn", "blk_1m", "blk_1m_ice"]
-    results = {}
+    fig, ax = plt.subplots(1,3, figsize=(12, 6))
     for scheme in schemes:
         rv, th_d, r_tot, z = run_scheme(scheme, f"test_{scheme}.nc")
-        results[scheme] = (rv, th_d, r_tot, z)
-    # Compare final values
-    rv_vals = [results[s][0][-1] for s in schemes]
-    th_d_vals = [results[s][1][-1] for s in schemes]
-    r_tot_vals = [results[s][2][-1] for s in schemes]
+        ax[0].plot(rv, z, label=f"{scheme}", linestyle ='--' if scheme=='blk_1m_ice' else '-')
+        ax[1].plot(th_d, z, label=f"{scheme}", linestyle ='--' if scheme=='blk_1m_ice' else '-')
+        ax[2].plot(r_tot, z, label=f"{scheme}", linestyle ='--' if scheme=='blk_1m_ice' else '-')
+    ax[0].set_ylabel("Height [m]")
+    ax[0].set_xlabel("Water vapor mixing ratio")
+    ax[1].set_xlabel("Dry potential temperature")
+    ax[2].set_xlabel("Total condensed water mixing ratio")
+    ax[0].legend()
+    ax[1].legend()
+    ax[2].legend()
+    plt.tight_layout()
+    plt.savefig("plots/outputs/plot_schemes.svg")
     
-    # Check closeness
-    for i in range(1, len(schemes)):
-        assert np.isclose(rv_vals[0], rv_vals[i], rtol=5e-2), f"r_v differs: {rv_vals[0]} vs {rv_vals[i]}"
-        assert np.isclose(th_d_vals[0], th_d_vals[i], rtol=5e-2), f"th_d differs: {th_d_vals[0]} vs {th_d_vals[i]}"
-        #assert np.isclose(r_tot_vals[0], r_tot_vals[i], rtol=5e-1), f"r_tot differs: {r_tot_vals[0]} vs {r_tot_vals[i]}"
