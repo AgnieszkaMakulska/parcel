@@ -155,6 +155,7 @@ def _opts_init_blk_1m_ice(opts, state, info):
     return opts_init
 
 def _micro_step(micro, state, info, opts, it, fout):
+  '''Microphysics step for lagrangian scheme'''
   libopts = lgrngn.opts_t()
   libopts.cond = True
   libopts.coal = False
@@ -189,12 +190,12 @@ def _micro_step(micro, state, info, opts, it, fout):
       state[id_str.replace('_g', '_a')] = np.frombuffer(micro.outbuf())[0]
 
 def _micro_step_blk_1m(micro_opts, state, info, opts, it):
-    """Microphysics step for bulk microphysics scheme"""
+    """Microphysics step for bulk scheme without ice processes"""
     # get state variables as numpy arrays
-    rhod = np.asarray([state["rhod"][0]], dtype=np.float64)
-    th_d = np.asarray([state["th_d"][0]], dtype=np.float64)
-    p = np.asarray([state["p"]], dtype=np.float64)
-    rv = np.asarray([state["r_v"][0]], dtype=np.float64)
+    rhod = np.asarray([state["rhod"][0]])
+    th_d = np.asarray([state["th_d"][0]])
+    p = np.asarray([state["p"]])
+    rv = np.asarray([state["r_v"][0]])
     rc = np.asarray([state["rc"][0]])
     rr = np.asarray([state["rr"][0]])
     dot_th_d = np.zeros_like(th_d)
@@ -243,16 +244,16 @@ def _micro_step_blk_1m(micro_opts, state, info, opts, it):
 
 
 def _micro_step_blk_1m_ice(micro_opts, state, info, opts, it):
-    
+    """Microphysics step for bulk scheme with ice processes"""
     # get state variables as numpy arrays
-    rhod = np.asarray([state["rhod"][0]], dtype=np.float64)
-    th_d = np.asarray([state["th_d"][0]], dtype=np.float64)
-    p = np.asarray([state["p"]], dtype=np.float64)
-    rv = np.asarray([state["r_v"][0]], dtype=np.float64)
-    rc = np.asarray([state["rc"][0]], dtype=np.float64)
-    rr = np.asarray([state["rr"][0]], dtype=np.float64)
-    ria = np.asarray([state["ria"][0]], dtype=np.float64)
-    rib = np.asarray([state["rib"][0]], dtype=np.float64)
+    rhod = np.asarray([state["rhod"][0]])
+    th_d = np.asarray([state["th_d"][0]])
+    p = np.asarray([state["p"]])
+    rv = np.asarray([state["r_v"][0]])
+    rc = np.asarray([state["rc"][0]])
+    rr = np.asarray([state["rr"][0]])
+    ria = np.asarray([state["ria"][0]])
+    rib = np.asarray([state["rib"][0]])
     dot_th_d = np.zeros_like(th_d)
     dot_rv = np.zeros_like(rv)
     dot_rc = np.zeros_like(rc)
@@ -341,6 +342,7 @@ def _output_bins(fout, t, micro, opts, spectra):
           fout.variables[dim+'_'+vm][int(t), int(bin)] = np.frombuffer(micro.outbuf())
 
 def _output_init(micro, opts, spectra):
+  """Initialize output file for lagrangian scheme"""
   # file & dimensions
   fout = netcdf.netcdf_file(opts["outfile"], 'w')
   fout.createDimension('t', None)
@@ -394,7 +396,7 @@ def _output_init(micro, opts, spectra):
   return fout
 
 def _output_init_blk_1m(opts):
-    """Initialize output file for bulk microphysics scheme"""
+    """Initialize output file for bulk microphysics scheme without ice processes"""
     fout = netcdf.netcdf_file(opts["outfile"], 'w')
     fout.createDimension('t', None)
     
@@ -601,10 +603,10 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
       micro = _micro_init(aerosol, opts, state, info)
       fout = _output_init(micro, opts, spectra)
   elif scheme == "blk_1m":
-      micro = _opts_init_blk_1m(opts, state, info)
+      micro_opts = _opts_init_blk_1m(opts, state, info)
       fout = _output_init_blk_1m(opts)
   elif scheme == "blk_1m_ice":
-      micro = _opts_init_blk_1m_ice(opts, state, info)
+      micro_opts = _opts_init_blk_1m_ice(opts, state, info)
       fout = _output_init_blk_1m_ice(opts)
   else:
       raise ValueError("Unknown scheme type. Use 'lgrngn', 'blk_1m' or 'blk_1m_ice'.")
@@ -670,9 +672,9 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
         if scheme == "lgrngn":
           _micro_step(micro, state, info, opts, it, fout)
         elif scheme == "blk_1m":
-          _micro_step_blk_1m(micro, state, info, opts, it)
+          _micro_step_blk_1m(micro_opts, state, info, opts, it)
         elif scheme == "blk_1m_ice":
-          _micro_step_blk_1m_ice(micro, state, info, opts, it)
+          _micro_step_blk_1m_ice(micro_opts, state, info, opts, it)
 
         # TODO: only if user wants to stop @ RH_max
         #if (state["RH"] < info["RH_max"]): break
@@ -692,11 +694,19 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
       if wait != 0:
         for it in range (nt+1, nt+wait):
           state["t"] = it * dt
-          _micro_step(micro, state, info, opts, it, fout)
+          if scheme == "lgrngn":
+            _micro_step(micro, state, info, opts, it, fout)
+          elif scheme == "blk_1m":
+            _micro_step_blk_1m(micro_opts, state, info, opts, it)
+          elif scheme == "blk_1m_ice":
+            _micro_step_blk_1m_ice(micro_opts, state, info, opts, it)
 
           if (it % outfreq == 0):
             rec = it/outfreq
-            _output(fout, opts, micro, state, rec, spectra)
+            if scheme == "lgrngn":
+              _output(fout, opts, micro, state, rec, spectra)
+            elif scheme == "blk_1m" or scheme == "blk_1m_ice":
+              _output_save(fout, state, rec)
 
 def _arguments_checking(opts, spectra, aerosol, scheme):
   if opts["T_0"] < 273.15 and scheme != "blk_1m_ice":
