@@ -62,6 +62,7 @@ class sum_of_lognormals(object):
     return res
 
 def _micro_init(aerosol, opts, state, info):
+  """Initialize the lagrangian microphysics scheme"""
 
   # lagrangian scheme options
   opts_init = lgrngn.opts_init_t()
@@ -106,7 +107,7 @@ def _micro_init(aerosol, opts, state, info):
 
   return micro
 
-def _micro_init_blk_1m(opts, state, info):
+def _opts_init_blk_1m(opts, state, info):
     """Initialize options for bulk microphysics scheme"""
     opts_init = blk_1m.opts_t()
     
@@ -133,7 +134,7 @@ def _micro_init_blk_1m(opts, state, info):
         
     return opts_init
 
-def _micro_init_blk_1m_ice(opts, state, info):
+def _opts_init_blk_1m_ice(opts, state, info):
     """Initialize options for bulk microphysics scheme with ice processes"""
     opts_init = blk_1m.opts_t()
     
@@ -600,10 +601,10 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
       micro = _micro_init(aerosol, opts, state, info)
       fout = _output_init(micro, opts, spectra)
   elif scheme == "blk_1m":
-      micro = _micro_init_blk_1m(opts, state, info)
+      micro = _opts_init_blk_1m(opts, state, info)
       fout = _output_init_blk_1m(opts)
   elif scheme == "blk_1m_ice":
-      micro = _micro_init_blk_1m_ice(opts, state, info)
+      micro = _opts_init_blk_1m_ice(opts, state, info)
       fout = _output_init_blk_1m_ice(opts)
   else:
       raise ValueError("Unknown scheme type. Use 'lgrngn', 'blk_1m' or 'blk_1m_ice'.")
