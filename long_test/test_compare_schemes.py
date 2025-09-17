@@ -69,5 +69,5 @@ def test_compare_schemes():
     
     # Check closeness
     for i in range(1, len(schemes)):
-        assert np.isclose(rv_vals[0], rv_vals[i], rtol=5e-2), f"r_v differs: {rv_vals[0]} vs {rv_vals[i]}"
-        assert np.isclose(th_d_vals[0], th_d_vals[i], rtol=5e-2), f"th_d differs: {th_d_vals[0]} vs {th_d_vals[i]}"
+      assert np.isclose(rv_vals[0], rv_vals[i], rtol=5e-4), f"r_v differs: {rv_vals[0]} vs {rv_vals[i]}"
+      assert np.isclose(th_d_vals[0], th_d_vals[i], rtol=5e-4), f"th_d differs: {th_d_vals[0]} vs {th_d_vals[i]}"
