@@ -126,6 +126,10 @@ def _opts_init_blk_1m(opts, state, info):
     opts_init.rimB = False 
     opts_init.melA = False
     opts_init.melB = False
+
+    opts_init.adj_nwtrph = True
+    opts_init.th_dry = True
+    opts_init.const_p = False
     
     # sanity check
     _stats(state, info)
@@ -190,54 +194,44 @@ def _micro_step(micro, state, info, opts, it, fout):
       state[id_str.replace('_g', '_a')] = np.frombuffer(micro.outbuf())[0]
 
 def _micro_step_blk_1m(micro_opts, state, info, opts, it):
-    """Microphysics step for bulk scheme without ice processes"""
-    # get state variables as numpy arrays
-    rhod = np.asarray([state["rhod"][0]])
-    th_d = np.asarray([state["th_d"][0]])
-    p = np.asarray([state["p"]])
-    rv = np.asarray([state["r_v"][0]])
-    rc = np.asarray([state["rc"][0]])
-    rr = np.asarray([state["rr"][0]])
-    dot_th_d = np.zeros_like(th_d)
-    dot_rv = np.zeros_like(rv)
-    dot_rc = np.zeros_like(rc)
-    dot_rr = np.zeros_like(rr)
+     """Microphysics step for bulk scheme without ice processes"""
+    # # get state variables as numpy arrays
+    p = np.asarray(state["p"])
+    dot_th_d = np.zeros_like(state["th_d"])
+    dot_rv = np.zeros_like(state["r_v"])
+    dot_rc = np.zeros_like(state["rc"])
+    dot_rr = np.zeros_like(state["rr"])
 
-
-    blk_1m.adj_cellwise_nwtrph(
+    blk_1m.adj_cellwise(
       micro_opts,
+      state["rhod"],
       p,
-      th_d,
-      rv,
-      rc,
+      state["th_d"],
+      state["r_v"],
+      state["rc"],
+      state["rr"],
       opts["dt"]
   )
     
-    blk_1m.rhs_cellwise_nwtrph(
+    blk_1m.rhs_cellwise_revap(
       micro_opts,
       dot_th_d,
       dot_rv,
       dot_rc,
       dot_rr,
-      rhod,
+      state["rhod"],
       p,
-      th_d,
-      rv,
-      rc,
-      rr,
+      state["th_d"],
+      state["r_v"],
+      state["rc"],
+      state["rr"],
       opts["dt"]
     )
 
-    th_d += dot_th_d * opts["dt"]
-    rv += dot_rv * opts["dt"]
-    rc += dot_rc * opts["dt"]
-    rr += dot_rr * opts["dt"]
-
-    # Update state dictionary with modified values
-    state["r_v"][0] = rv[0]
-    state["th_d"][0] = th_d[0]
-    state["rc"] = np.array([rc[0]])
-    state["rr"] = np.array([rr[0]])
+    state["th_d"] += dot_th_d * opts["dt"]
+    state["r_v"] += dot_rv * opts["dt"]
+    state["rc"] += dot_rc * opts["dt"]
+    state["rr"] += dot_rr * opts["dt"]
     
     # Update thermodynamic state
     _stats(state, info)
@@ -246,31 +240,26 @@ def _micro_step_blk_1m(micro_opts, state, info, opts, it):
 def _micro_step_blk_1m_ice(micro_opts, state, info, opts, it):
     """Microphysics step for bulk scheme with ice processes"""
     # get state variables as numpy arrays
-    rhod = np.asarray([state["rhod"][0]])
-    th_d = np.asarray([state["th_d"][0]])
-    p = np.asarray([state["p"]])
-    rv = np.asarray([state["r_v"][0]])
-    rc = np.asarray([state["rc"][0]])
-    rr = np.asarray([state["rr"][0]])
-    ria = np.asarray([state["ria"][0]])
-    rib = np.asarray([state["rib"][0]])
-    dot_th_d = np.zeros_like(th_d)
-    dot_rv = np.zeros_like(rv)
-    dot_rc = np.zeros_like(rc)
-    dot_rr = np.zeros_like(rr)
-    dot_ria = np.zeros_like(ria)
-    dot_rib = np.zeros_like(rib)
+    p = np.asarray(state["p"])
+    dot_th_d = np.zeros_like(state["th_d"])
+    dot_rv = np.zeros_like(state["r_v"])
+    dot_rc = np.zeros_like(state["rc"])
+    dot_rr = np.zeros_like(state["rr"])
+    dot_ria = np.zeros_like(state["ria"])
+    dot_rib = np.zeros_like(state["rib"])
 
-
-    blk_1m.adj_cellwise_nwtrph(
-      micro_opts,  # options struct
-      p,        # pressure array
-      th_d,        # dry potential temperature array
-      rv,         # water vapor mixing ratio array
-      rc,         # cloud water mixing ratio array
-      opts["dt"]  # timestep as double
+    blk_1m.adj_cellwise(
+      micro_opts,
+      state["rhod"],
+      p,
+      state["th_d"],
+      state["r_v"],
+      state["rc"],
+      state["rr"],
+      opts["dt"]
   )
-    blk_1m.rhs_cellwise_nwtrph_ice(
+    
+    blk_1m.rhs_cellwise_ice(
       micro_opts,
       dot_th_d,
       dot_rv,
@@ -278,38 +267,33 @@ def _micro_step_blk_1m_ice(micro_opts, state, info, opts, it):
       dot_rr,
       dot_ria,
       dot_rib,
-      rhod,
+      state["rhod"],
       p,
-      th_d,
-      rv,
-      rc,
-      rr,
-      ria,
-      rib,
+      state["th_d"],
+      state["r_v"],
+      state["rc"],
+      state["rr"],
+      state["ria"],
+      state["rib"],
       opts["dt"]
     )
 
-    th_d += dot_th_d * opts["dt"]
-    rv += dot_rv * opts["dt"]
-    rc += dot_rc * opts["dt"]
-    rr += dot_rr * opts["dt"]
-    ria += dot_ria * opts["dt"]
-    rib += dot_rib * opts["dt"]
+    state["th_d"] += dot_th_d * opts["dt"]
+    state["r_v"] += dot_rv * opts["dt"]
+    state["rc"] += dot_rc * opts["dt"]
+    state["rr"] += dot_rr * opts["dt"]
+    state["ria"] += dot_ria * opts["dt"]
+    state["rib"] += dot_rib * opts["dt"]
 
-    # Update state dictionary with modified values
-    state["r_v"][0] = rv[0]
-    state["th_d"][0] = th_d[0]
-    state["rc"] = np.array([rc[0]])
-    state["rr"] = np.array([rr[0]])
-    state["ria"] = np.array([ria[0]])
-    state["rib"] = np.array([rib[0]])
-    
     # Update thermodynamic state
     _stats(state, info)
+
 
 def _stats(state, info):
   state["T"] = np.array([common.T(state["th_d"][0], state["rhod"][0])])
   state["RH"] = state["p"] * state["r_v"] / (state["r_v"] + common.eps) / common.p_vs(state["T"][0])
+  state["T_blk"] = np.array([state["th_d"][0] * common.exner(state["p"])])
+  state["RH_blk"] = state["r_v"] / common.r_vs(state["T_blk"][0], state["p"])
   info["RH_max"] = max(info["RH_max"], state["RH"])
 
 def _output_bins(fout, t, micro, opts, spectra):
@@ -381,7 +365,7 @@ def _output_init(micro, opts, spectra):
         fout.variables[name+'_m'+str(vm)].unit = 'm^'+str(vm)+' (kg of dry air)^-1'
 
   units = {"z"  : "m",     "t"   : "s",     "r_v"  : "kg/kg", "th_d" : "K", "rhod" : "kg/m3",
-           "p"  : "Pa",    "T"   : "K",     "RH"   : "1"
+           "p"  : "Pa",    "T"   : "K",     "RH"   : "1",    "T_blk"   : "K",     "RH_blk"   : "1"
   }
 
   if micro.opts_init.chem_switch:
@@ -411,7 +395,9 @@ def _output_init_blk_1m(opts):
         "rhod": ("kg/m3",),
         "p": ("Pa",),
         "T": ("K",),
-        "RH": ("1",)
+        "RH": ("1",),
+        "T_blk": ("K",),
+        "RH_blk": ("1",)
     }
     
     for var, (unit,) in vars_units.items():
@@ -438,7 +424,9 @@ def _output_init_blk_1m_ice(opts):
         "rhod": ("kg/m3",),
         "p": ("Pa",),
         "T": ("K",),
-        "RH": ("1",)
+        "RH": ("1",),
+        "T_blk": ("K",),
+        "RH_blk": ("1",)
     }
     
     for var, (unit,) in vars_units.items():
