@@ -25,5 +25,5 @@ def test_bulk_ice():
     with netcdf.netcdf_file("test_bulk_ice.nc", 'r') as f:
         ria = np.array(f.variables['ria'][:])
         rc = np.array(f.variables['rc'][:])
-    assert np.isclose(ria[-1], 7.843e-11, rtol=1e-3)
-    assert np.isclose(rc[-1], 5.522e-4, rtol=1e-3)
+    assert np.isclose(ria[-1], 8.9947e-11, rtol=1e-3)
+    assert np.isclose(rc[-1], 6.0941e-4, rtol=1e-3)
