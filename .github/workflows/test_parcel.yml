@@ -15,8 +15,6 @@ jobs:
         build_type: ["RelWithDebInfoPortable", "Debug"]
 
     steps:
-    - name: Checkout parcel repo
-      uses: actions/checkout@v5
 
     # === Build libcloudph++ first ===
     - name: Checkout libcloudph++ repo
@@ -44,26 +42,27 @@ jobs:
     - name: Check PYTHONPATH
       run: echo ${PYTHONPATH}
 
-    # === Load the Apptainer image ===
-    - name: Load UWLCM Apptainer image
-      uses: igfuw/load_UWLCM_singularity_image@main
-      with:
-        path: ${{ github.workspace }}/apptainer_images
-
     # === Run parcel tests ===
+    - name: checkout parcel repo
+      uses: actions/checkout@v5
+      with:
+        repository: AgnieszkaMakulska/parcel
+        path: parcel
     - name: Create output folder
-      run: mkdir -p parcel/plots/outputs
+      run: mkdir parcel/plots/outputs
 
-    - name: Run parcel unit tests
-      working-directory: parcel
+    - name: run parcel unit_test
+      working-directory: ${{github.workspace}}/parcel
+      if: ${{matrix.long_tests}}
       run: apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v unit_test
 
-    - name: Run parcel long tests
-      if: ${{ matrix.build_type == 'RelWithDebInfoPortable' }}
-      working-directory: parcel
+    - name: run parcel long_test
+      working-directory: ${{github.workspace}}/parcel
+      if: ${{matrix.long_tests}}
       run: apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v long_test
 
-    - name: Run parcel debug tests
-      if: ${{ matrix.build_type == 'Debug' }}
-      working-directory: parcel
+    - name: run parcel unit_test_debug
+      working-directory: ${{github.workspace}}/parcel
+      if: ${{matrix.debug_tests}}
       run: apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v unit_test_debug
+
