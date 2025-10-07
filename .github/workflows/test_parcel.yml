@@ -1,0 +1,69 @@
+name: Test parcel with libcloudph++
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-24.04
+
+    strategy:
+      matrix:
+        build_type: ["RelWithDebInfoPortable", "Debug"]
+
+    steps:
+    - name: Checkout parcel repo
+      uses: actions/checkout@v5
+
+    # === Build libcloudph++ first ===
+    - name: Checkout libcloudph++ repo
+      uses: actions/checkout@v5
+      with:
+        repository: igfuw/libcloudphxx
+        path: libcloudphxx
+
+    - name: Build and install libcloudph++
+      uses: igfuw/libcloudphxx_build@master
+      with:
+        disable_cuda: true
+        build_type: ${{ matrix.build_type }}
+        threads: 4
+        path: ${{ github.workspace }}/libcloudphxx
+        install_prefix: ${{ github.workspace }}/installed
+
+    - name: Install libcloudph++
+      run: sudo cmake --install libcloudphxx/build
+
+    # === Prepare environment ===
+    - name: Set PYTHONPATH
+      run: echo "PYTHONPATH=${{ github.workspace }}/installed$(python3 -c "import sysconfig; print(sysconfig.get_path('platlib'))")" >> $GITHUB_ENV
+
+    - name: Check PYTHONPATH
+      run: echo ${PYTHONPATH}
+
+    # === Load the Apptainer image ===
+    - name: Load UWLCM Apptainer image
+      uses: igfuw/load_UWLCM_singularity_image@main
+      with:
+        path: ${{ github.workspace }}/apptainer_images
+
+    # === Run parcel tests ===
+    - name: Create output folder
+      run: mkdir -p parcel/plots/outputs
+
+    - name: Run parcel unit tests
+      working-directory: parcel
+      run: apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v unit_test
+
+    - name: Run parcel long tests
+      if: ${{ matrix.build_type == 'RelWithDebInfoPortable' }}
+      working-directory: parcel
+      run: apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v long_test
+
+    - name: Run parcel debug tests
+      if: ${{ matrix.build_type == 'Debug' }}
+      working-directory: parcel
+      run: apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v unit_test_debug
