@@ -54,22 +54,6 @@ jobs:
     - name: run parcel tests
       working-directory: ${{github.workspace}}/parcel
       run: |
-        python3 -m pytest -s -v parcel/unit_test
-        python3 -m pytest -s -v parcel/long_test
-        python3 -m pytest -s -v parcel/unit_test_debug
-
-    # - name: run parcel unit_test
-    #   working-directory: ${{github.workspace}}/parcel
-    #   #if: ${{matrix.long_tests}}
-    #   run: apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v parcel/unit_test
-
-    # - name: run parcel long_test
-    #   working-directory: ${{github.workspace}}/parcel
-    #   #if: ${{matrix.long_tests}}
-    #   run: apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v parcel/long_test
-
-    # - name: run parcel unit_test_debug
-    #   working-directory: ${{github.workspace}}/parcel
-    #   #if: ${{matrix.debug_tests}}
-    #   run: apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v parcel/unit_test_debug
-
+        apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v unit_test
+        apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v long_test
+        apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v unit_test_debug
