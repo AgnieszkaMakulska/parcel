@@ -46,14 +46,19 @@ jobs:
     - name: checkout parcel repo
       uses: actions/checkout@v5
       with:
-        repository: AgnieszkaMakulska/parcel
+        repository: igfuw/parcel
         path: parcel
     - name: Create output folder
       run: mkdir parcel/plots/outputs
 
     - name: run parcel tests
       working-directory: ${{github.workspace}}/parcel
-      run: |
-        apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v unit_test
-        apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v long_test
-        apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v unit_test_debug
+      run: apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v unit_test
+
+    - name: run long tests
+      working-directory: ${{github.workspace}}/parcel
+      run: apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v long_test
+
+    - name: run unit tests debug
+      working-directory: ${{github.workspace}}/parcel
+      run: apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v unit_test_debug
