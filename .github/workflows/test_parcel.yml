@@ -1,0 +1,64 @@
+name: Test parcel with libcloudph++
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-24.04
+
+    strategy:
+      matrix:
+        build_type: ["RelWithDebInfoPortable", "Debug"]
+
+    steps:
+
+    # === Build libcloudph++ first ===
+    - name: Checkout libcloudph++ repo
+      uses: actions/checkout@v5
+      with:
+        repository: igfuw/libcloudphxx
+        path: libcloudphxx
+
+    - name: Build and install libcloudph++
+      uses: igfuw/libcloudphxx_build@master
+      with:
+        disable_cuda: true
+        build_type: ${{ matrix.build_type }}
+        threads: 4
+        path: ${{ github.workspace }}/libcloudphxx
+        install_prefix: ${{ github.workspace }}/installed
+
+    - name: Install libcloudph++
+      run: sudo cmake --install libcloudphxx/build
+
+    # === Prepare environment ===
+    - name: Set PYTHONPATH
+      run: echo "PYTHONPATH=${{ github.workspace }}/installed$(python3 -c "import sysconfig; print(sysconfig.get_path('platlib'))")" >> $GITHUB_ENV
+
+    - name: Check PYTHONPATH
+      run: echo ${PYTHONPATH}
+
+    # === Run parcel tests ===
+    - name: checkout parcel repo
+      uses: actions/checkout@v5
+      with:
+        repository: igfuw/parcel
+        path: parcel
+    - name: Create output folder
+      run: mkdir parcel/plots/outputs
+
+    - name: run parcel tests
+      working-directory: ${{github.workspace}}/parcel
+      run: apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v unit_test
+
+    - name: run long tests
+      working-directory: ${{github.workspace}}/parcel
+      run: apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v long_test
+
+    - name: run unit tests debug
+      working-directory: ${{github.workspace}}/parcel
+      run: apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v unit_test_debug
