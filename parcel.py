@@ -66,7 +66,7 @@ def _micro_init(aerosol, opts, state, info):
 
   # lagrangian scheme options
   opts_init = lgrngn.opts_init_t()
-  for opt in ["dt", "sd_conc", "chem_rho", "sstp_cond"]:
+  for opt in ["dt", "sd_conc", "chem_rho", "sstp_cond", "ice_switch"]:
     setattr(opts_init, opt, opts[opt])
   opts_init.n_sd_max = opts_init.sd_conc
 
@@ -460,7 +460,8 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
   outfile="test.nc",
   pprof="pprof_piecewise_const_rhod", 
   outfreq=100,
-  scheme="lgrngn", # parameter to select scheme
+  scheme="lgrngn", # microphysics scheme: lgrngn, blk_1m
+  ice_switch=False,
   sd_conc=64,
   aerosol = '{"ammonium_sulfate": {"kappa": 0.61, "mean_r": [0.02e-6], "gstdev": [1.4], "n_tot": [60.0e6]}}',
   out_bin = '{"radii": {"rght": 0.01, "moms": [0], "drwt": "wet", "nbin": 1, "lnli": "log", "left": 1e-15}}',
@@ -557,7 +558,7 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
     r_0 = common.eps * opts["RH_0"] * common.p_vs(T_0) / (p_0 - opts["RH_0"] * common.p_vs(T_0))
 
   # sanity checks for arguments
-  _arguments_checking(opts, spectra, aerosol, scheme)
+  _arguments_checking(opts, spectra, aerosol, ice_switch)
 
   th_0 = T_0 * (common.p_1000 / p_0)**(common.R_d / common.c_pd)
   nt = int(z_max / (w * dt))
@@ -572,12 +573,9 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
   if scheme == "blk_1m":
     state["rc"] = np.array([0.0])  # initial cloud water
     state["rr"] = np.array([0.0])  # initial rain water
-
-  if scheme == "blk_1m_ice":
-    state["rc"] = np.array([0.0])  # initial cloud water
-    state["rr"] = np.array([0.0])  # initial rain water
-    state["ria"] = np.array([0.0])  # initial ice A
-    state["rib"] = np.array([0.0])  # initial ice B
+    if ice_switch == True:
+      state["ria"] = np.array([0.0])  # initial ice A
+      state["rib"] = np.array([0.0])  # initial ice B
 
   if opts["chem_dsl"] or opts["chem_dsc"] or opts["chem_rct"]:
     for key in _Chem_g_id.keys():
@@ -590,14 +588,14 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
   if scheme == "lgrngn":
       micro = _micro_init(aerosol, opts, state, info)
       fout = _output_init(micro, opts, spectra)
-  elif scheme == "blk_1m":
+  elif scheme == "blk_1m" and ice_switch == False:
       micro_opts = _opts_init_blk_1m(opts, state, info)
       fout = _output_init_blk_1m(opts)
-  elif scheme == "blk_1m_ice":
+  elif scheme == "blk_1m" and ice_switch == True:
       micro_opts = _opts_init_blk_1m_ice(opts, state, info)
       fout = _output_init_blk_1m_ice(opts)
   else:
-      raise ValueError("Unknown scheme type. Use 'lgrngn', 'blk_1m' or 'blk_1m_ice'.")
+      raise ValueError("Unknown scheme type. Use 'lgrngn', 'blk_1m'.")
     
   with fout:
       # adding chem state vars - only for lgrngn scheme
@@ -612,7 +610,7 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
       # t=0 : init & save
       if scheme == "lgrngn":
           _output(fout, opts, micro, state, 0, spectra)
-      elif scheme == "blk_1m" or scheme == "blk_1m_ice":
+      elif scheme == "blk_1m":
           _output_save(fout, state, 0)  # simpler output for blk_1m
 
       # timestepping
@@ -659,9 +657,9 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
         # microphysics
         if scheme == "lgrngn":
           _micro_step(micro, state, info, opts, it, fout)
-        elif scheme == "blk_1m":
+        elif scheme == "blk_1m" and ice_switch == False:
           _micro_step_blk_1m(micro_opts, state, info, opts, it)
-        elif scheme == "blk_1m_ice":
+        elif scheme == "blk_1m" and ice_switch == True:
           _micro_step_blk_1m_ice(micro_opts, state, info, opts, it)
 
         # TODO: only if user wants to stop @ RH_max
@@ -673,7 +671,7 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
           rec = it/outfreq
           if scheme == "lgrngn":
             _output(fout, opts, micro, state, rec, spectra)
-          elif scheme == "blk_1m" or scheme == "blk_1m_ice":
+          elif scheme == "blk_1m":
             _output_save(fout, state, rec)
 
       _save_attrs(fout, info)
@@ -684,21 +682,21 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
           state["t"] = it * dt
           if scheme == "lgrngn":
             _micro_step(micro, state, info, opts, it, fout)
-          elif scheme == "blk_1m":
+          elif scheme == "blk_1m" and ice_switch == False:
             _micro_step_blk_1m(micro_opts, state, info, opts, it)
-          elif scheme == "blk_1m_ice":
+          elif scheme == "blk_1m" and ice_switch == True:
             _micro_step_blk_1m_ice(micro_opts, state, info, opts, it)
 
           if (it % outfreq == 0):
             rec = it/outfreq
             if scheme == "lgrngn":
               _output(fout, opts, micro, state, rec, spectra)
-            elif scheme == "blk_1m" or scheme == "blk_1m_ice":
+            elif scheme == "blk_1m":
               _output_save(fout, state, rec)
 
-def _arguments_checking(opts, spectra, aerosol, scheme):
-  if opts["T_0"] < 273.15 and scheme != "blk_1m_ice":
-    raise Exception("temperature should be larger than 0C for schemes other than blk_1m_ice")
+def _arguments_checking(opts, spectra, aerosol, ice_switch):
+  if opts["T_0"] < 273.15 and ice_switch == False:
+    raise Exception("temperature should be larger than 0C if ice_switch=False")
   elif ((opts["r_0"] >= 0) and (opts["RH_0"] >= 0)):
     raise Exception("both r_0 and RH_0 specified, please use only one")
   if opts["w"] < 0:

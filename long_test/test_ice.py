@@ -19,7 +19,8 @@ def test_bulk_ice():
         RH_0 = 1,
         outfile="test_bulk_ice.nc",
         outfreq=100,
-        scheme="blk_1m_ice"
+        scheme="blk_1m",
+        ice_switch=True
     )
     parcel(**args)
     with netcdf.netcdf_file("test_bulk_ice.nc", 'r') as f:
