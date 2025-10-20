@@ -12,7 +12,7 @@ import json, inspect, numpy as np
 import pdb
 import subprocess
 
-from libcloudphxx import common, lgrngn
+from libcloudphxx import common, lgrngn, blk_1m
 from libcloudphxx import git_revision as libcloud_version
 
 parcel_version = subprocess.check_output(["git", "rev-parse", "HEAD"]).rstrip()
@@ -62,6 +62,7 @@ class sum_of_lognormals(object):
     return res
 
 def _micro_init(aerosol, opts, state, info):
+  """Initialize the lagrangian microphysics scheme"""
 
   # lagrangian scheme options
   opts_init = lgrngn.opts_init_t()
@@ -106,7 +107,59 @@ def _micro_init(aerosol, opts, state, info):
 
   return micro
 
+def _opts_init_blk_1m(opts, state, info):
+    """Initialize options for bulk microphysics scheme"""
+    opts_init = blk_1m.opts_t()
+    
+    opts_init.accr = False  # no rain accretion
+    opts_init.conv = False  # no autoconversion
+    opts_init.sedi = False  # no sedimentation
+
+    # no ice proceesses:
+    opts_init.homA1 = False
+    opts_init.homA2 = False
+    opts_init.hetA = False
+    opts_init.hetB = False 
+    opts_init.depA = False 
+    opts_init.depB = False
+    opts_init.rimA = False
+    opts_init.rimB = False 
+    opts_init.melA = False
+    opts_init.melB = False
+
+    opts_init.adj_nwtrph = True
+    opts_init.th_dry = True
+    opts_init.const_p = False
+    
+    # sanity check
+    _stats(state, info)
+    if (state["RH"] > 1): 
+        raise Exception("Please supply initial T,p,r_v below supersaturation")
+        
+    return opts_init
+
+def _opts_init_blk_1m_ice(opts, state, info):
+    """Initialize options for bulk microphysics scheme with ice processes"""
+    opts_init = blk_1m.opts_t()
+    
+    opts_init.sedi = False  # no sedimentation
+    opts_init.accr = False  # no rain accretion
+    opts_init.conv = False  # no autoconversion
+
+    # no collisions for ice:
+    opts_init.hetB = False 
+    opts_init.rimA = False
+    opts_init.rimB = False 
+    
+    # sanity check
+    _stats(state, info)
+    if (state["RH"] > 1): 
+        raise Exception("Please supply initial T,p,r_v below supersaturation")
+        
+    return opts_init
+
 def _micro_step(micro, state, info, opts, it, fout):
+  '''Microphysics step for lagrangian scheme'''
   libopts = lgrngn.opts_t()
   libopts.cond = True
   libopts.coal = False
@@ -140,9 +193,107 @@ def _micro_step(micro, state, info, opts, it, fout):
       micro.diag_chem(id_int)
       state[id_str.replace('_g', '_a')] = np.frombuffer(micro.outbuf())[0]
 
+def _micro_step_blk_1m(micro_opts, state, info, opts, it):
+  """Microphysics step for bulk scheme without ice processes"""
+  # get state variables as numpy arrays
+  p = np.asarray(state["p"])
+  dot_th_d = np.zeros_like(state["th_d"])
+  dot_rv = np.zeros_like(state["r_v"])
+  dot_rc = np.zeros_like(state["rc"])
+  dot_rr = np.zeros_like(state["rr"])
+
+  blk_1m.adj_cellwise(
+    micro_opts,
+    state["rhod"],
+    p,
+    state["th_d"],
+    state["r_v"],
+    state["rc"],
+    state["rr"],
+    opts["dt"]
+  )
+    
+  blk_1m.rhs_cellwise_revap(
+    micro_opts,
+    dot_th_d,
+    dot_rv,
+    dot_rc,
+    dot_rr,
+    state["rhod"],
+    p,
+    state["th_d"],
+    state["r_v"],
+    state["rc"],
+    state["rr"],
+    opts["dt"]
+  )
+
+  state["th_d"] += dot_th_d * opts["dt"]
+  state["r_v"] += dot_rv * opts["dt"]
+  state["rc"] += dot_rc * opts["dt"]
+  state["rr"] += dot_rr * opts["dt"]
+  
+  # Update thermodynamic state
+  _stats(state, info)
+
+
+def _micro_step_blk_1m_ice(micro_opts, state, info, opts, it):
+  """Microphysics step for bulk scheme with ice processes"""
+  # get state variables as numpy arrays
+  p = np.asarray(state["p"])
+  dot_th_d = np.zeros_like(state["th_d"])
+  dot_rv = np.zeros_like(state["r_v"])
+  dot_rc = np.zeros_like(state["rc"])
+  dot_rr = np.zeros_like(state["rr"])
+  dot_ria = np.zeros_like(state["ria"])
+  dot_rib = np.zeros_like(state["rib"])
+
+  blk_1m.adj_cellwise(
+    micro_opts,
+    state["rhod"],
+    p,
+    state["th_d"],
+    state["r_v"],
+    state["rc"],
+    state["rr"],
+    opts["dt"]
+    )
+  
+  blk_1m.rhs_cellwise_ice(
+    micro_opts,
+    dot_th_d,
+    dot_rv,
+    dot_rc,
+    dot_rr,
+    dot_ria,
+    dot_rib,
+    state["rhod"],
+    p,
+    state["th_d"],
+    state["r_v"],
+    state["rc"],
+    state["rr"],
+    state["ria"],
+    state["rib"],
+    opts["dt"]
+  )
+
+  state["th_d"] += dot_th_d * opts["dt"]
+  state["r_v"] += dot_rv * opts["dt"]
+  state["rc"] += dot_rc * opts["dt"]
+  state["rr"] += dot_rr * opts["dt"]
+  state["ria"] += dot_ria * opts["dt"]
+  state["rib"] += dot_rib * opts["dt"]
+
+  # Update thermodynamic state
+  _stats(state, info)
+
+
 def _stats(state, info):
   state["T"] = np.array([common.T(state["th_d"][0], state["rhod"][0])])
   state["RH"] = state["p"] * state["r_v"] / (state["r_v"] + common.eps) / common.p_vs(state["T"][0])
+  state["T_blk"] = np.array([state["th_d"][0] * common.exner(state["p"])])
+  state["RH_blk"] = state["r_v"] / common.r_vs(state["T_blk"][0], state["p"])
   info["RH_max"] = max(info["RH_max"], state["RH"])
 
 def _output_bins(fout, t, micro, opts, spectra):
@@ -175,6 +326,7 @@ def _output_bins(fout, t, micro, opts, spectra):
           fout.variables[dim+'_'+vm][int(t), int(bin)] = np.frombuffer(micro.outbuf())
 
 def _output_init(micro, opts, spectra):
+  """Initialize output file for lagrangian scheme"""
   # file & dimensions
   fout = netcdf.netcdf_file(opts["outfile"], 'w')
   fout.createDimension('t', None)
@@ -213,7 +365,7 @@ def _output_init(micro, opts, spectra):
         fout.variables[name+'_m'+str(vm)].unit = 'm^'+str(vm)+' (kg of dry air)^-1'
 
   units = {"z"  : "m",     "t"   : "s",     "r_v"  : "kg/kg", "th_d" : "K", "rhod" : "kg/m3",
-           "p"  : "Pa",    "T"   : "K",     "RH"   : "1"
+           "p"  : "Pa",    "T"   : "K",     "RH"   : "1",    "T_blk"   : "K",     "RH_blk"   : "1"
   }
 
   if micro.opts_init.chem_switch:
@@ -226,6 +378,62 @@ def _output_init(micro, opts, spectra):
     fout.variables[var_name].unit = unit
 
   return fout
+
+def _output_init_blk_1m(opts):
+    """Initialize output file for bulk microphysics scheme without ice processes"""
+    fout = netcdf.netcdf_file(opts["outfile"], 'w')
+    fout.createDimension('t', None)
+    
+    # Basic variables with their units
+    vars_units = {
+        "z": ("m",), 
+        "t": ("s",),
+        "r_v": ("kg/kg",),
+        "rc": ("kg/kg",),
+        "rr": ("kg/kg",),
+        "th_d": ("K",),
+        "rhod": ("kg/m3",),
+        "p": ("Pa",),
+        "T": ("K",),
+        "RH": ("1",),
+        "T_blk": ("K",),
+        "RH_blk": ("1",)
+    }
+    
+    for var, (unit,) in vars_units.items():
+        fout.createVariable(var, 'd', ('t',))
+        fout.variables[var].unit = unit
+        
+    return fout
+
+def _output_init_blk_1m_ice(opts):
+    """Initialize output file for bulk ice microphysics scheme"""
+    fout = netcdf.netcdf_file(opts["outfile"], 'w')
+    fout.createDimension('t', None)
+    
+    # Basic variables with their units
+    vars_units = {
+        "z": ("m",), 
+        "t": ("s",),
+        "r_v": ("kg/kg",),
+        "rc": ("kg/kg",),
+        "rr": ("kg/kg",),
+        "ria": ("kg/kg",),
+        "rib": ("kg/kg",),
+        "th_d": ("K",),
+        "rhod": ("kg/m3",),
+        "p": ("Pa",),
+        "T": ("K",),
+        "RH": ("1",),
+        "T_blk": ("K",),
+        "RH_blk": ("1",)
+    }
+    
+    for var, (unit,) in vars_units.items():
+        fout.createVariable(var, 'd', ('t',))
+        fout.variables[var].unit = unit
+        
+    return fout
 
 def _output_save(fout, state, rec):
   for var, val in state.items():
@@ -248,12 +456,14 @@ def _p_hydro_const_th_rv(z_lev, p_0, th_std, r_v, z_0=0.):
   return common.p_hydro(z_lev, th_std, r_v, z_0, p_0)
 
 def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
-  r_0=-1., RH_0=-1., #if none specified, the default will be r_0=.022,
+  r_0=-1., RH_0=-1.,
   outfile="test.nc",
-  pprof="pprof_piecewise_const_rhod",
-  outfreq=100, sd_conc=64,
+  pprof="pprof_piecewise_const_rhod", 
+  outfreq=100,
+  scheme="lgrngn", # parameter to select scheme
+  sd_conc=64,
   aerosol = '{"ammonium_sulfate": {"kappa": 0.61, "mean_r": [0.02e-6], "gstdev": [1.4], "n_tot": [60.0e6]}}',
-  out_bin = '{"radii": {"rght": 0.0001, "moms": [0], "drwt": "wet", "nbin": 1, "lnli": "log", "left": 1e-09}}',
+  out_bin = '{"radii": {"rght": 0.01, "moms": [0], "drwt": "wet", "nbin": 1, "lnli": "log", "left": 1e-15}}',
   SO2_g = 0., O3_g = 0., H2O2_g = 0., CO2_g = 0., HNO3_g = 0., NH3_g = 0.,
   chem_dsl = False, chem_dsc = False, chem_rct = False,
   chem_rho = 1.8e3,
@@ -347,7 +557,7 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
     r_0 = common.eps * opts["RH_0"] * common.p_vs(T_0) / (p_0 - opts["RH_0"] * common.p_vs(T_0))
 
   # sanity checks for arguments
-  _arguments_checking(opts, spectra, aerosol)
+  _arguments_checking(opts, spectra, aerosol, scheme)
 
   th_0 = T_0 * (common.p_1000 / p_0)**(common.R_d / common.c_pd)
   nt = int(z_max / (w * dt))
@@ -359,6 +569,16 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
     "T" : None, "RH" : None
   }
 
+  if scheme == "blk_1m":
+    state["rc"] = np.array([0.0])  # initial cloud water
+    state["rr"] = np.array([0.0])  # initial rain water
+
+  if scheme == "blk_1m_ice":
+    state["rc"] = np.array([0.0])  # initial cloud water
+    state["rr"] = np.array([0.0])  # initial rain water
+    state["ria"] = np.array([0.0])  # initial ice A
+    state["rib"] = np.array([0.0])  # initial ice B
+
   if opts["chem_dsl"] or opts["chem_dsc"] or opts["chem_rct"]:
     for key in _Chem_g_id.keys():
       state.update({ key : np.array([opts[key]])})
@@ -366,89 +586,119 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
   info = { "RH_max" : 0, "libcloud_Git_revision" : libcloud_version,
            "parcel_Git_revision" : parcel_version }
 
-  micro = _micro_init(aerosol, opts, state, info)
+  # Initialize the selected scheme
+  if scheme == "lgrngn":
+      micro = _micro_init(aerosol, opts, state, info)
+      fout = _output_init(micro, opts, spectra)
+  elif scheme == "blk_1m":
+      micro_opts = _opts_init_blk_1m(opts, state, info)
+      fout = _output_init_blk_1m(opts)
+  elif scheme == "blk_1m_ice":
+      micro_opts = _opts_init_blk_1m_ice(opts, state, info)
+      fout = _output_init_blk_1m_ice(opts)
+  else:
+      raise ValueError("Unknown scheme type. Use 'lgrngn', 'blk_1m' or 'blk_1m_ice'.")
+    
+  with fout:
+      # adding chem state vars - only for lgrngn scheme
+      if scheme == "lgrngn" and micro.opts_init.chem_switch:
+        state.update({ "SO2_a" : 0.,"O3_a" : 0.,"H2O2_a" : 0.,})
+        state.update({ "CO2_a" : 0.,"HNO3_a" : 0.})
 
-  with _output_init(micro, opts, spectra) as fout:
-    # adding chem state vars
-    if micro.opts_init.chem_switch:
-      state.update({ "SO2_a" : 0.,"O3_a" : 0.,"H2O2_a" : 0.,})
-      state.update({ "CO2_a" : 0.,"HNO3_a" : 0.})
+        micro.diag_all() # selecting all particles
+        micro.diag_chem(_Chem_a_id["NH3_a"])
+        state.update({"NH3_a": np.frombuffer(micro.outbuf())[0]})
 
-      micro.diag_all() # selecting all particles
-      micro.diag_chem(_Chem_a_id["NH3_a"])
-      state.update({"NH3_a": np.frombuffer(micro.outbuf())[0]})
+      # t=0 : init & save
+      if scheme == "lgrngn":
+          _output(fout, opts, micro, state, 0, spectra)
+      elif scheme == "blk_1m" or scheme == "blk_1m_ice":
+          _output_save(fout, state, 0)  # simpler output for blk_1m
 
-    # t=0 : init & save
-    _output(fout, opts, micro, state, 0, spectra)
-
-    # timestepping
-    for it in range(1,nt+1):
-      # diagnostics
-      # the reasons to use analytic solution:
-      # - independent of dt
-      # - same as in 2D kinematic model
-      state["z"] += w * dt
-      state["t"] = it * dt
-
-      # pressure
-      if pprof == "pprof_const_th_rv":
-        # as in icicle model
-        p_hydro = _p_hydro_const_th_rv(state["z"], p_0, th_0, r_0)
-      elif pprof == "pprof_const_rhod":
-        # as in Grabowski and Wang 2009
-        rho = 1.13 # kg/m3  1.13
-        state["p"] = _p_hydro_const_rho(state["z"], p_0, rho)
-
-      elif pprof == "pprof_piecewise_const_rhod":
-        # as in Grabowski and Wang 2009 but calculating pressure
-        # for rho piecewise constant per each time step
-        state["p"] = _p_hydro_const_rho(w*dt, state["p"], state["rhod"][0])
-
-      else: raise Exception("pprof should be pprof_const_th_rv, pprof_const_rhod, or pprof_piecewise_const_rhod")
-
-      # dry air density
-      if pprof == "pprof_const_th_rv":
-        state["rhod"][0] = common.rhod(p_hydro, th_0, r_0)
-        state["p"] = common.p(
-          state["rhod"][0],
-          state["r_v"][0],
-          common.T(state["th_d"][0], state["rhod"][0])
-        )
-
-      else:
-        state["rhod"][0] = common.rhod(
-          state["p"],
-          common.th_dry2std(state["th_d"][0], state["r_v"][0]),
-          state["r_v"][0]
-        )
-
-      # microphysics
-      _micro_step(micro, state, info, opts, it, fout)
-
-      # TODO: only if user wants to stop @ RH_max
-      #if (state["RH"] < info["RH_max"]): break
-
-      # output
-      if (it % outfreq == 0):
-        print(str(round(it / (nt * 1.) * 100, 2)) + " %")
-        rec = it/outfreq
-        _output(fout, opts, micro, state, rec, spectra)
-
-    _save_attrs(fout, info)
-    _save_attrs(fout, opts)
-
-    if wait != 0:
-      for it in range (nt+1, nt+wait):
+      # timestepping
+      for it in range(1, nt+1):
+        # diagnostics
+        # the reasons to use analytic solution:
+        # - independent of dt
+        # - same as in 2D kinematic model
+        state["z"] += w * dt
         state["t"] = it * dt
-        _micro_step(micro, state, info, opts, it, fout)
 
+        # pressure
+        if pprof == "pprof_const_th_rv":
+          # as in icicle model
+          p_hydro = _p_hydro_const_th_rv(state["z"], p_0, th_0, r_0)
+        elif pprof == "pprof_const_rhod":
+          # as in Grabowski and Wang 2009
+          rho = 1.13 # kg/m3  1.13
+          state["p"] = _p_hydro_const_rho(state["z"], p_0, rho)
+
+        elif pprof == "pprof_piecewise_const_rhod":
+          # as in Grabowski and Wang 2009 but calculating pressure
+          # for rho piecewise constant per each time step
+          state["p"] = _p_hydro_const_rho(w*dt, state["p"], state["rhod"][0])
+
+        else: raise Exception("pprof should be pprof_const_th_rv, pprof_const_rhod, or pprof_piecewise_const_rhod")
+
+        # dry air density
+        if pprof == "pprof_const_th_rv":
+          state["rhod"][0] = common.rhod(p_hydro, th_0, r_0)
+          state["p"] = common.p(
+            state["rhod"][0],
+            state["r_v"][0],
+            common.T(state["th_d"][0], state["rhod"][0])
+          )
+
+        else:
+          state["rhod"][0] = common.rhod(
+            state["p"],
+            common.th_dry2std(state["th_d"][0], state["r_v"][0]),
+            state["r_v"][0]
+          )
+
+        # microphysics
+        if scheme == "lgrngn":
+          _micro_step(micro, state, info, opts, it, fout)
+        elif scheme == "blk_1m":
+          _micro_step_blk_1m(micro_opts, state, info, opts, it)
+        elif scheme == "blk_1m_ice":
+          _micro_step_blk_1m_ice(micro_opts, state, info, opts, it)
+
+        # TODO: only if user wants to stop @ RH_max
+        #if (state["RH"] < info["RH_max"]): break
+
+        # output
         if (it % outfreq == 0):
+          print(str(round(it / (nt * 1.) * 100, 2)) + " %")
           rec = it/outfreq
-          _output(fout, opts, micro, state, rec, spectra)
+          if scheme == "lgrngn":
+            _output(fout, opts, micro, state, rec, spectra)
+          elif scheme == "blk_1m" or scheme == "blk_1m_ice":
+            _output_save(fout, state, rec)
 
-def _arguments_checking(opts, spectra, aerosol):
-  if opts["T_0"] < 273.15:
-    raise Exception("temperature should be larger than 0C - microphysics works only for warm clouds")
+      _save_attrs(fout, info)
+      _save_attrs(fout, opts)
+
+      if wait != 0:
+        for it in range (nt+1, nt+wait):
+          state["t"] = it * dt
+          if scheme == "lgrngn":
+            _micro_step(micro, state, info, opts, it, fout)
+          elif scheme == "blk_1m":
+            _micro_step_blk_1m(micro_opts, state, info, opts, it)
+          elif scheme == "blk_1m_ice":
+            _micro_step_blk_1m_ice(micro_opts, state, info, opts, it)
+
+          if (it % outfreq == 0):
+            rec = it/outfreq
+            if scheme == "lgrngn":
+              _output(fout, opts, micro, state, rec, spectra)
+            elif scheme == "blk_1m" or scheme == "blk_1m_ice":
+              _output_save(fout, state, rec)
+
+def _arguments_checking(opts, spectra, aerosol, scheme):
+  if opts["T_0"] < 273.15 and scheme != "blk_1m_ice":
+    raise Exception("temperature should be larger than 0C for schemes other than blk_1m_ice")
   elif ((opts["r_0"] >= 0) and (opts["RH_0"] >= 0)):
     raise Exception("both r_0 and RH_0 specified, please use only one")
   if opts["w"] < 0:
