@@ -4,10 +4,15 @@ from libcloudphxx import blk_1m
 from micro_blk_1m_common import _opts_init_blk_1m_common
 from parcel_common import _stats
         
-def _opts_init_blk_1m_ice(opts):
+def _opts_init_blk_1m_ice():
     """Initialize options for bulk microphysics scheme with ice processes"""
     opts_init = blk_1m.opts_t()
     opts_init = _opts_init_blk_1m_common(opts_init)
+
+    # no collisions for ice:
+    opts_init.hetB = False
+    opts_init.rimA = False
+    opts_init.rimB = False
     
     return opts_init
 
