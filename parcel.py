@@ -17,443 +17,12 @@ from libcloudphxx import git_revision as libcloud_version
 
 parcel_version = subprocess.check_output(["git", "rev-parse", "HEAD"]).rstrip()
 
-# id_str     id_int (gas phase chemistry labels)
-_Chem_g_id = {
-  "SO2_g"  : lgrngn.chem_species_t.SO2,
-  "H2O2_g" : lgrngn.chem_species_t.H2O2,
-  "O3_g"   : lgrngn.chem_species_t.O3,
-  "HNO3_g" : lgrngn.chem_species_t.HNO3,
-  "NH3_g"  : lgrngn.chem_species_t.NH3,
-  "CO2_g"  : lgrngn.chem_species_t.CO2
-}
-
-# id_str     id_int (aqueous phase chemistry labels)
-_Chem_a_id = {
-  "SO2_a"  : lgrngn.chem_species_t.SO2,
-  "H2O2_a" : lgrngn.chem_species_t.H2O2,
-  "O3_a"   : lgrngn.chem_species_t.O3,
-  "CO2_a"  : lgrngn.chem_species_t.CO2,
-  "HNO3_a" : lgrngn.chem_species_t.HNO3,
-  "NH3_a"  : lgrngn.chem_species_t.NH3,
-  "H"      : lgrngn.chem_species_t.H,
-  "S_VI"   : lgrngn.chem_species_t.S_VI
-}
-
-class lognormal(object):
-  def __init__(self, mean_r, gstdev, n_tot):
-    self.mean_r = mean_r
-    self.gstdev = gstdev
-    self.n_tot = n_tot
-
-  def __call__(self, lnr):
-    from math import exp, log, sqrt, pi
-    return self.n_tot * exp(
-      -(lnr - log(self.mean_r))**2 / 2 / log(self.gstdev)**2
-    ) / log(self.gstdev) / sqrt(2*pi);
-
-class sum_of_lognormals(object):
-  def __init__(self, lognormals=[]):
-    self.lognormals = lognormals
-
-  def __call__(self, lnr):
-    res = 0.
-    for lognormal in self.lognormals:
-      res += lognormal(lnr)
-    return res
-
-def _micro_init(aerosol, opts, state, info):
-  """Initialize the lagrangian microphysics scheme"""
-
-  # lagrangian scheme options
-  opts_init = lgrngn.opts_init_t()
-  for opt in ["dt", "sd_conc", "chem_rho", "sstp_cond"]:
-    setattr(opts_init, opt, opts[opt])
-  opts_init.n_sd_max = opts_init.sd_conc
-
-  # read in the initial aerosol size distribution
-  dry_distros = {}
-  for name, dct in aerosol.items(): # loop over kappas
-    lognormals = []
-    for i in range(len(dct["mean_r"])):
-      lognormals.append(lognormal(dct["mean_r"][i], dct["gstdev"][i], dct["n_tot"][i]))
-    dry_distros[dct["kappa"]] = sum_of_lognormals(lognormals)
-  opts_init.dry_distros = dry_distros
-
-  # better resolution for the SD tail
-  if opts["large_tail"]:
-      opts_init.sd_conc_large_tail = 1
-      opts_init.n_sd_max = int(1e6)  # some more space for the tail SDs
-
-  # switch off sedimentation and collisions
-  opts_init.sedi_switch = False
-  opts_init.coal_switch = False
-
-  # switching on chemistry if either dissolving, dissociation or reactions are chosen
-  opts_init.chem_switch = False
-  if opts["chem_dsl"] or opts["chem_dsc"] or opts["chem_rct"]:
-    opts_init.chem_switch = True
-    opts_init.sstp_chem = opts["sstp_chem"]
-
-  # initialisation
-  micro = lgrngn.factory(lgrngn.backend_t.serial, opts_init)
-  ambient_chem = {}
-  if micro.opts_init.chem_switch:
-    ambient_chem = dict((v, state[k]) for k,v in _Chem_g_id.items())
-  micro.init(state["th_d"], state["r_v"], state["rhod"], ambient_chem=ambient_chem)
-
-  # sanity check
-  _stats(state, info)
-  if (state["RH"] > 1): raise Exception("Please supply initial T,p,r_v below supersaturation")
-
-  return micro
-
-def _opts_init_blk_1m(opts, state, info):
-    """Initialize options for bulk microphysics scheme"""
-    opts_init = blk_1m.opts_t()
-    
-    opts_init.accr = False  # no rain accretion
-    opts_init.conv = False  # no autoconversion
-    opts_init.sedi = False  # no sedimentation
-
-    # no ice proceesses:
-    opts_init.homA1 = False
-    opts_init.homA2 = False
-    opts_init.hetA = False
-    opts_init.hetB = False 
-    opts_init.depA = False 
-    opts_init.depB = False
-    opts_init.rimA = False
-    opts_init.rimB = False 
-    opts_init.melA = False
-    opts_init.melB = False
-
-    opts_init.adj_nwtrph = True
-    opts_init.th_dry = True
-    opts_init.const_p = False
-    
-    # sanity check
-    _stats(state, info)
-    if (state["RH"] > 1): 
-        raise Exception("Please supply initial T,p,r_v below supersaturation")
-        
-    return opts_init
-
-def _opts_init_blk_1m_ice(opts, state, info):
-    """Initialize options for bulk microphysics scheme with ice processes"""
-    opts_init = blk_1m.opts_t()
-    
-    opts_init.sedi = False  # no sedimentation
-    opts_init.accr = False  # no rain accretion
-    opts_init.conv = False  # no autoconversion
-
-    # no collisions for ice:
-    opts_init.hetB = False 
-    opts_init.rimA = False
-    opts_init.rimB = False 
-    
-    # sanity check
-    _stats(state, info)
-    if (state["RH"] > 1): 
-        raise Exception("Please supply initial T,p,r_v below supersaturation")
-        
-    return opts_init
-
-def _micro_step(micro, state, info, opts, it, fout):
-  '''Microphysics step for lagrangian scheme'''
-  libopts = lgrngn.opts_t()
-  libopts.cond = True
-  libopts.coal = False
-  libopts.adve = False
-  libopts.sedi = False
-
-  # chemical options
-  if micro.opts_init.chem_switch:
-    # chem processes: dissolving, dissociation, reactions
-    libopts.chem_dsl = opts["chem_dsl"]
-    libopts.chem_dsc = opts["chem_dsc"]
-    libopts.chem_rct = opts["chem_rct"]
-
-  # get trace gases
-  ambient_chem = {}
-  if micro.opts_init.chem_switch:
-    ambient_chem = dict((v, state[k]) for k,v in _Chem_g_id.items())
-
-  # call libcloudphxx microphysics
-  micro.step_sync(libopts, state["th_d"], state["r_v"], state["rhod"], ambient_chem=ambient_chem)
-  micro.step_async(libopts)
-
-  # update state after microphysics (needed for below update for chemistry)
-  _stats(state, info)
-
-  # update in state for aqueous chem (TODO do we still want to have aq chem in state?)
-  if micro.opts_init.chem_switch:
-    micro.diag_all() # selecting all particles
-    for id_str, id_int in _Chem_g_id.items():
-      # save changes due to chemistry
-      micro.diag_chem(id_int)
-      state[id_str.replace('_g', '_a')] = np.frombuffer(micro.outbuf())[0]
-
-def _micro_step_blk_1m(micro_opts, state, info, opts, it):
-  """Microphysics step for bulk scheme without ice processes"""
-  # get state variables as numpy arrays
-  p = np.asarray(state["p"])
-  dot_th_d = np.zeros_like(state["th_d"])
-  dot_rv = np.zeros_like(state["r_v"])
-  dot_rc = np.zeros_like(state["rc"])
-  dot_rr = np.zeros_like(state["rr"])
-
-  blk_1m.adj_cellwise(
-    micro_opts,
-    state["rhod"],
-    p,
-    state["th_d"],
-    state["r_v"],
-    state["rc"],
-    state["rr"],
-    opts["dt"]
-  )
-    
-  blk_1m.rhs_cellwise_revap(
-    micro_opts,
-    dot_th_d,
-    dot_rv,
-    dot_rc,
-    dot_rr,
-    state["rhod"],
-    p,
-    state["th_d"],
-    state["r_v"],
-    state["rc"],
-    state["rr"],
-    opts["dt"]
-  )
-
-  state["th_d"] += dot_th_d * opts["dt"]
-  state["r_v"] += dot_rv * opts["dt"]
-  state["rc"] += dot_rc * opts["dt"]
-  state["rr"] += dot_rr * opts["dt"]
-  
-  # Update thermodynamic state
-  _stats(state, info)
-
-
-def _micro_step_blk_1m_ice(micro_opts, state, info, opts, it):
-  """Microphysics step for bulk scheme with ice processes"""
-  # get state variables as numpy arrays
-  p = np.asarray(state["p"])
-  dot_th_d = np.zeros_like(state["th_d"])
-  dot_rv = np.zeros_like(state["r_v"])
-  dot_rc = np.zeros_like(state["rc"])
-  dot_rr = np.zeros_like(state["rr"])
-  dot_ria = np.zeros_like(state["ria"])
-  dot_rib = np.zeros_like(state["rib"])
-
-  blk_1m.adj_cellwise(
-    micro_opts,
-    state["rhod"],
-    p,
-    state["th_d"],
-    state["r_v"],
-    state["rc"],
-    state["rr"],
-    opts["dt"]
-    )
-  
-  blk_1m.rhs_cellwise_ice(
-    micro_opts,
-    dot_th_d,
-    dot_rv,
-    dot_rc,
-    dot_rr,
-    dot_ria,
-    dot_rib,
-    state["rhod"],
-    p,
-    state["th_d"],
-    state["r_v"],
-    state["rc"],
-    state["rr"],
-    state["ria"],
-    state["rib"],
-    opts["dt"]
-  )
-
-  state["th_d"] += dot_th_d * opts["dt"]
-  state["r_v"] += dot_rv * opts["dt"]
-  state["rc"] += dot_rc * opts["dt"]
-  state["rr"] += dot_rr * opts["dt"]
-  state["ria"] += dot_ria * opts["dt"]
-  state["rib"] += dot_rib * opts["dt"]
-
-  # Update thermodynamic state
-  _stats(state, info)
-
-
-def _stats(state, info):
-  state["T"] = np.array([common.T(state["th_d"][0], state["rhod"][0])])
-  state["RH"] = state["p"] * state["r_v"] / (state["r_v"] + common.eps) / common.p_vs(state["T"][0])
-  state["T_blk"] = np.array([state["th_d"][0] * common.exner(state["p"])])
-  state["RH_blk"] = state["r_v"] / common.r_vs(state["T_blk"][0], state["p"])
-  info["RH_max"] = max(info["RH_max"], state["RH"])
-
-def _output_bins(fout, t, micro, opts, spectra):
-  for dim, dct in spectra.items():
-    for bin in range(dct["nbin"]):
-      if dct["drwt"] == 'wet':
-        micro.diag_wet_rng(
-          fout.variables[dim+"_r_wet"][bin],
-          fout.variables[dim+"_r_wet"][bin] + fout.variables[dim+"_dr_wet"][bin]
-        )
-      elif dct["drwt"] == 'dry':
-        micro.diag_dry_rng(
-          fout.variables[dim+"_r_dry"][bin],
-          fout.variables[dim+"_r_dry"][bin] + fout.variables[dim+"_dr_dry"][bin]
-        )
-      else: raise Exception("drwt should be wet or dry")
-
-      for vm in dct["moms"]:
-        if type(vm) == int:
-          # calculating moments
-          if dct["drwt"] == 'wet':
-            micro.diag_wet_mom(vm)
-          elif dct["drwt"] == 'dry':
-            micro.diag_dry_mom(vm)
-          else: raise Exception("drwt should be wet or dry")
-          fout.variables[dim+'_m'+str(vm)][int(t), int(bin)] = np.frombuffer(micro.outbuf())
-        else:
-          # calculate chemistry
-          micro.diag_chem(_Chem_a_id[vm])
-          fout.variables[dim+'_'+vm][int(t), int(bin)] = np.frombuffer(micro.outbuf())
-
-def _output_init(micro, opts, spectra):
-  """Initialize output file for lagrangian scheme"""
-  # file & dimensions
-  fout = netcdf.netcdf_file(opts["outfile"], 'w')
-  fout.createDimension('t', None)
-  for name, dct in spectra.items():
-    fout.createDimension(name, dct["nbin"])
-
-    tmp = name + '_r_' + dct["drwt"]
-    fout.createVariable(tmp, 'd', (name,))
-    fout.variables[tmp].unit = "m"
-    fout.variables[tmp].description = "particle wet radius (left bin edge)"
-
-    tmp = name + '_dr_' + dct["drwt"]
-    fout.createVariable(tmp, 'd', (name,))
-    fout.variables[tmp].unit = "m"
-    fout.variables[tmp].description = "bin width"
-
-    if dct["lnli"] == 'log':
-      from math import exp, log
-      dlnr = (log(dct["rght"]) - log(dct["left"])) / dct["nbin"]
-      allbins = np.exp(log(dct["left"]) + np.arange(dct["nbin"]+1) * dlnr)
-      fout.variables[name+'_r_'+dct["drwt"]][:] = allbins[0:-1]
-      fout.variables[name+'_dr_'+dct["drwt"]][:] = allbins[1:] - allbins[0:-1]
-    elif dct["lnli"] == 'lin':
-      dr = (dct["rght"] - dct["left"]) / dct["nbin"]
-      fout.variables[name+'_r_'+dct["drwt"]][:] = dct["left"] + np.arange(dct["nbin"]) * dr
-      fout.variables[name+'_dr_'+dct["drwt"]][:] = dr
-    else: raise Exception("lnli should be log or lin")
-
-    for vm in dct["moms"]:
-      if (vm in _Chem_a_id):
-      	fout.createVariable(name+'_'+vm, 'd', ('t',name))
-      	fout.variables[name+'_'+vm].unit = 'kg of chem species dissolved in cloud droplets (kg of dry air)^-1'
-      else:
-        assert(type(vm)==int)
-        fout.createVariable(name+'_m'+str(vm), 'd', ('t',name))
-        fout.variables[name+'_m'+str(vm)].unit = 'm^'+str(vm)+' (kg of dry air)^-1'
-
-  units = {"z"  : "m",     "t"   : "s",     "r_v"  : "kg/kg", "th_d" : "K", "rhod" : "kg/m3",
-           "p"  : "Pa",    "T"   : "K",     "RH"   : "1",    "T_blk"   : "K",     "RH_blk"   : "1"
-  }
-
-  if micro.opts_init.chem_switch:
-    for id_str in _Chem_g_id.keys():
-      units[id_str] = "gas mixing ratio [kg / kg dry air]"
-      units[id_str.replace('_g', '_a')] = "kg of chem species (both undissociated and ions) dissolved in cloud droplets (kg of dry air)^-1"
-
-  for var_name, unit in units.items():
-    fout.createVariable(var_name, 'd', ('t',))
-    fout.variables[var_name].unit = unit
-
-  return fout
-
-def _output_init_blk_1m(opts):
-    """Initialize output file for bulk microphysics scheme without ice processes"""
-    fout = netcdf.netcdf_file(opts["outfile"], 'w')
-    fout.createDimension('t', None)
-    
-    # Basic variables with their units
-    vars_units = {
-        "z": ("m",), 
-        "t": ("s",),
-        "r_v": ("kg/kg",),
-        "rc": ("kg/kg",),
-        "rr": ("kg/kg",),
-        "th_d": ("K",),
-        "rhod": ("kg/m3",),
-        "p": ("Pa",),
-        "T": ("K",),
-        "RH": ("1",),
-        "T_blk": ("K",),
-        "RH_blk": ("1",)
-    }
-    
-    for var, (unit,) in vars_units.items():
-        fout.createVariable(var, 'd', ('t',))
-        fout.variables[var].unit = unit
-        
-    return fout
-
-def _output_init_blk_1m_ice(opts):
-    """Initialize output file for bulk ice microphysics scheme"""
-    fout = netcdf.netcdf_file(opts["outfile"], 'w')
-    fout.createDimension('t', None)
-    
-    # Basic variables with their units
-    vars_units = {
-        "z": ("m",), 
-        "t": ("s",),
-        "r_v": ("kg/kg",),
-        "rc": ("kg/kg",),
-        "rr": ("kg/kg",),
-        "ria": ("kg/kg",),
-        "rib": ("kg/kg",),
-        "th_d": ("K",),
-        "rhod": ("kg/m3",),
-        "p": ("Pa",),
-        "T": ("K",),
-        "RH": ("1",),
-        "T_blk": ("K",),
-        "RH_blk": ("1",)
-    }
-    
-    for var, (unit,) in vars_units.items():
-        fout.createVariable(var, 'd', ('t',))
-        fout.variables[var].unit = unit
-        
-    return fout
-
-def _output_save(fout, state, rec):
-  for var, val in state.items():
-    fout.variables[var][int(rec)] = val
-
-def _save_attrs(fout, dictnr):
-  for var, val in dictnr.items():
-    setattr(fout, var, val)
-
-def _output(fout, opts, micro, state, rec, spectra):
-  _output_bins(fout, rec, micro, opts, spectra)
-  _output_save(fout, state, rec)
-
-def _p_hydro_const_rho(dz, p, rho):
-  # hydrostatic pressure assuming constatnt density
-  return p - rho * common.g * dz
-
-def _p_hydro_const_th_rv(z_lev, p_0, th_std, r_v, z_0=0.):
-  # hydrostatic pressure assuming constatnt theta and r_v
-  return common.p_hydro(z_lev, th_std, r_v, z_0, p_0)
+# import refactored modules
+from parcel_common import _Chem_g_id, _Chem_a_id, lognormal, sum_of_lognormals, _stats, _p_hydro_const_rho, _p_hydro_const_th_rv, _arguments_checking, _init_sanity_check
+from micro_lgrngn import _micro_init as _micro_init_lgrngn, _micro_step as _micro_step_lgrngn
+from micro_blk_1m import _opts_init_blk_1m, _micro_step_blk_1m
+from micro_blk_1m_ice import _opts_init_blk_1m_ice, _micro_step_blk_1m_ice
+from io_output import _output_bins, _output_init, _output_init_blk_1m, _output_init_blk_1m_ice, _output_save, _save_attrs, _output
 
 def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
   r_0=-1., RH_0=-1.,
@@ -586,15 +155,17 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
   info = { "RH_max" : 0, "libcloud_Git_revision" : libcloud_version,
            "parcel_Git_revision" : parcel_version }
 
+  _init_sanity_check(state, info)
+
   # Initialize the selected scheme
   if scheme == "lgrngn":
-      micro = _micro_init(aerosol, opts, state, info)
+      micro = _micro_init_lgrngn(aerosol, opts, state)
       fout = _output_init(micro, opts, spectra)
   elif scheme == "blk_1m":
-      micro_opts = _opts_init_blk_1m(opts, state, info)
+      micro_opts = _opts_init_blk_1m()
       fout = _output_init_blk_1m(opts)
   elif scheme == "blk_1m_ice":
-      micro_opts = _opts_init_blk_1m_ice(opts, state, info)
+      micro_opts = _opts_init_blk_1m_ice()
       fout = _output_init_blk_1m_ice(opts)
   else:
       raise ValueError("Unknown scheme type. Use 'lgrngn', 'blk_1m' or 'blk_1m_ice'.")
@@ -658,11 +229,11 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
 
         # microphysics
         if scheme == "lgrngn":
-          _micro_step(micro, state, info, opts, it, fout)
+          _micro_step_lgrngn(micro, state, info, opts)
         elif scheme == "blk_1m":
-          _micro_step_blk_1m(micro_opts, state, info, opts, it)
+          _micro_step_blk_1m(micro_opts, state, info, opts)
         elif scheme == "blk_1m_ice":
-          _micro_step_blk_1m_ice(micro_opts, state, info, opts, it)
+          _micro_step_blk_1m_ice(micro_opts, state, info, opts)
 
         # TODO: only if user wants to stop @ RH_max
         #if (state["RH"] < info["RH_max"]): break
@@ -683,11 +254,11 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
         for it in range (nt+1, nt+wait):
           state["t"] = it * dt
           if scheme == "lgrngn":
-            _micro_step(micro, state, info, opts, it, fout)
+            _micro_step_lgrngn(micro, state, info, opts)
           elif scheme == "blk_1m":
-            _micro_step_blk_1m(micro_opts, state, info, opts, it)
+            _micro_step_blk_1m(micro_opts, state, info, opts)
           elif scheme == "blk_1m_ice":
-            _micro_step_blk_1m_ice(micro_opts, state, info, opts, it)
+            _micro_step_blk_1m_ice(micro_opts, state, info, opts)
 
           if (it % outfreq == 0):
             rec = it/outfreq
@@ -695,76 +266,6 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
               _output(fout, opts, micro, state, rec, spectra)
             elif scheme == "blk_1m" or scheme == "blk_1m_ice":
               _output_save(fout, state, rec)
-
-def _arguments_checking(opts, spectra, aerosol, scheme):
-  if opts["T_0"] < 273.15 and scheme != "blk_1m_ice":
-    raise Exception("temperature should be larger than 0C for schemes other than blk_1m_ice")
-  elif ((opts["r_0"] >= 0) and (opts["RH_0"] >= 0)):
-    raise Exception("both r_0 and RH_0 specified, please use only one")
-  if opts["w"] < 0:
-    raise Exception("vertical velocity should be larger than 0")
-
-  for name, dct in aerosol.items():
-    # TODO: check if name is valid netCDF identifier
-    # (http://www.unidata.ucar.edu/software/thredds/current/netcdf-java/CDM/Identifiers.html)
-    keys = ["kappa", "mean_r", "n_tot", "gstdev"]
-    for key in keys:
-      if key not in dct:
-        raise Exception(">>" + key + "<< is missing in aerosol[" + name + "]")
-    for key in dct:
-      if key not in keys:
-        raise Exception("invalid key >>" + key + "<< in aerosol[" + name + "]")
-    if dct["kappa"] <= 0:
-      raise Exception("kappa hygroscopicity parameter should be larger than 0 for aerosol[" + name + "]")
-    if type(dct["mean_r"]) != list:
-        raise Exception(">>mean_r<< key in aerosol["+ name +"] must be a list")
-    if type(dct["gstdev"]) != list:
-        raise Exception(">>gstdev<< key in aerosol["+ name +"] must be a list")
-    if type(dct["n_tot"]) != list:
-        raise Exception(">>n_tot<< key in aerosol["+ name +"] must be a list")
-    if not len(dct["mean_r"]) == len(dct["n_tot"]) == len(dct["gstdev"]):
-      raise Exception("mean_r, n_tot and gstdev lists should have same sizes for aerosol[" + name + "]")
-    for mean_r in dct["mean_r"]:
-      if mean_r <= 0:
-        raise Exception("mean radius should be > 0 for aerosol[" + name + "]")
-    for n_tot in dct["n_tot"]:
-      if n_tot <= 0:
-        raise Exception("concentration should be > 0 for aerosol[" + name + "]")
-    for gstdev in dct["gstdev"]:
-      if gstdev <= 0:
-        raise Exception("standard deviation should be > 0 for aerosol[" + name + "]")
-    # necessary?
-      if gstdev == 1.:
-        raise Exception("standard deviation should be != 1 to avoid monodisperse distribution for aerosol[" + name + "]")
-
-  for name, dct in spectra.items():
-    # TODO: check if name is valid netCDF identifier
-    # (http://www.unidata.ucar.edu/software/thredds/current/netcdf-java/CDM/Identifiers.html)
-    keys = ["left", "rght", "nbin", "drwt", "lnli", "moms"]
-    for key in keys:
-      if key not in dct:
-        raise Exception(">>" + key + "<< is missing in out_bin[" + name + "]")
-    for key in dct:
-      if key not in keys:
-        raise Exception("invalid key >>" + key + "<< in out_bin[" + name + "]")
-    if type(dct["left"]) not in [int, float]:
-        raise Exception(">>left<< in out_bin["+ name +"] must be int or float")
-    if type(dct["rght"]) not in [int, float]:
-        raise Exception(">>rght<< in out_bin["+ name +"] must be int or float")
-    if dct["left"] >= dct["rght"]:
-        raise Exception(">>left<< is greater than >>rght<< in out_bin["+ name +"]")
-    if dct["drwt"] not in ["dry", "wet"]:
-        raise Exception(">>drwt<< key in out_bin["+ name +"] must be either >>dry<< or >>wet<<")
-    if dct["lnli"] not in ["lin", "log"]:
-        raise Exception(">>lnli<< key in out_bin["+ name +"] must be either >>lin<< or >>log<<")
-    if type(dct["nbin"]) != int:
-        raise Exception(">>nbin<< key in out_bin["+ name +"] must be an integer number")
-    if type(dct["moms"]) != list:
-        raise Exception(">>moms<< key in out_bin["+ name +"] must be a list")
-    for mom in dct["moms"]:
-        if (type(mom) != int):
-          if (mom not in list(_Chem_a_id.keys())):
-            raise Exception(">>moms<< key in out_bin["+ name +"] must be a list of integer numbers or valid chemical compounds (" +str(list(_Chem_a_id.keys())) + ")")
 
 # ensuring that pure "import parcel" does not trigger any simulation
 if __name__ == '__main__':
