@@ -13,6 +13,9 @@ def _micro_init(aerosol, opts, state):
     setattr(opts_init, opt, opts[opt])
   opts_init.n_sd_max = opts_init.sd_conc
 
+  opts_init.th_dry = True
+  opts_init.const_p = False
+
   # read in the initial aerosol size distribution
   dry_distros = {}
   for name, dct in aerosol.items(): # loop over kappas
