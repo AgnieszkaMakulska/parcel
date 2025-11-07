@@ -17,17 +17,7 @@ def _output_bins(fout, t, micro, opts, spectra):
           fout.variables[dim+"_r_dry"][bin],
           fout.variables[dim+"_r_dry"][bin] + fout.variables[dim+"_dr_dry"][bin]
         )
-      elif dct["drwt"] == 'ice_a':
-        micro.diag_ice_a_rng(
-          fout.variables[dim+"_a_ice"][bin],
-          fout.variables[dim+"_a_ice"][bin] + fout.variables[dim+"_da_ice"][bin]
-        )
-      elif dct["drwt"] == 'ice_c':
-        micro.diag_ice_c_rng(
-          fout.variables[dim+"_c_ice"][bin],
-          fout.variables[dim+"_c_ice"][bin] + fout.variables[dim+"_dc_ice"][bin]
-        )
-      else: raise Exception("drwt should be wet or dry or ice_a or ice_c")
+      else: raise Exception("drwt should be wet or dry")
 
       for vm in dct["moms"]:
         if type(vm) == int:
@@ -36,11 +26,7 @@ def _output_bins(fout, t, micro, opts, spectra):
             micro.diag_wet_mom(vm)
           elif dct["drwt"] == 'dry':
             micro.diag_dry_mom(vm)
-          elif dct["drwt"] == 'ice_a':
-            micro.diag_ice_a_mom(vm)
-          elif dct["drwt"] == 'ice_c':
-            micro.diag_ice_c_mom(vm)
-          else: raise Exception("drwt should be wet or dry or ice_a or ice_c")
+          else: raise Exception("drwt should be wet or dry")
           fout.variables[dim+'_m'+str(vm)][int(t), int(bin)] = np.frombuffer(micro.outbuf())
         else:
           # calculate chemistry
