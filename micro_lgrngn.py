@@ -86,3 +86,7 @@ def _micro_step(micro, state, info, opts):
       # save changes due to chemistry
       micro.diag_chem(id_int)
       state[id_str.replace('_g', '_a')] = np.frombuffer(micro.outbuf())[0]
+  if micro.opts_init.ice_switch:
+    micro.diag_ice()
+    micro.diag_ice_vol()
+    state["ice_vol"] = np.frombuffer(micro.outbuf())[0]
