@@ -23,7 +23,7 @@ def plot_profiles(fnc, output_folder="plots/outputs/"):
     z = fnc.variables["z"][:]
     r_v = fnc.variables["r_v"][:] * 1000  #g/kg
     r_liq = np.array([i[0] for i in fnc.variables['liq_m3'][:]]) *4/3 * np.pi * common.rho_w * 1000 #g/kg
-    r_ice = fnc.variables["ice_vol"][:] * common.rho_i * 1000 #g/kg
+    r_ice = fnc.variables["ice_mass"][:] * 1000 #g/kg
 
     plots[0].plot(r_v + r_liq + r_ice, z)
     plots[0].plot(r_v, z)
@@ -36,7 +36,7 @@ def plot_profiles(fnc, output_folder="plots/outputs/"):
         subprocess.call(["mkdir", output_folder])
     plt.savefig(os.path.join(output_folder, "plot_profiles_ice_SD.png"))
 
-def main():      
+def test_plot_ice_SD():   
     outfile = "onesim_plot.nc"
     parcel(dt=1.,w=1.,sd_conc=100,
            z_max = 5000.0,
@@ -54,7 +54,3 @@ def main():
     plot_profiles(fnc)
     fnc.close()
     subprocess.call(["rm", outfile])
-    
-
-if __name__ == '__main__':
-    main()

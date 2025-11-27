@@ -142,7 +142,7 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
   }
 
   if scheme == "lgrngn" and ice_switch == True:
-    state["ice_vol"] = np.array([0.0])
+    state["ice_mass"] = np.array([0.0])
 
   if scheme == "blk_1m":
     state["rc"] = np.array([0.0])  # initial cloud water
