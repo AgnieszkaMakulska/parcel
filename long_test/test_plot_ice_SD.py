@@ -47,7 +47,7 @@ def test_plot_ice_SD():
            ice_nucl=True,
            time_dep_ice_nucl=False,
            aerosol = '{"ammonium_sulfate": {"kappa": 0.61, "rd_insol": 0.5e-6, "mean_r": [0.02e-6], "gstdev": [1.4], "n_tot": [60.0e6]}}', 
-           outfreq = 10, 
+           outfreq = 100, 
            out_bin= '{"liq": {"rght": 1, "moms": [0,3], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 5e-20}}',
            outfile=outfile)
     fnc = netcdf.netcdf_file(outfile)

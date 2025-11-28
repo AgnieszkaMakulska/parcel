@@ -42,7 +42,8 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
   sstp_cond = 1,
   sstp_chem = 1,
   wait = 0,
-  large_tail = False
+  large_tail = False,
+  rng_seed = None
 ):
   """
   Args:
@@ -53,6 +54,10 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
     p_0     (Optional[float]):    initial pressure [Pa]
     r_0     (Optional[float]):    initial water vapour mass mixing ratio [kg/kg]
     RH_0    (Optional[float]):    initial relative humidity
+    scheme  (Optional[string]):   microphysics scheme to use: 'lgrngn', 'blk_1m'
+    ice_switch (Optional[bool]):  enable ice microphysics
+    ice_nucl (Optional[bool]):    enable ice nucleation in lagrangian scheme
+    time_dep_ice_nucl (Optional[bool]): enable time-dependent ice nucleation in lagrangian scheme
     outfile (Optional[string]):   output netCDF file name
     outfreq (Optional[int]):      output interval (in number of time steps)
     pprof   (Optional[string]):   method to calculate pressure profile used to calculate
@@ -74,6 +79,8 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
                                                  conditions (T=20C, p=1013.25 hPa, rv=0) [m^-3]            (list if multimodal distribution)
 
     large_tail (Optional[bool]) : use more SD to better represent the large tail of the initial aerosol distribution
+
+    rng_seed (Optional[int]) :  seed for random number generator
 
     out_bin (Optional[json str]): dict of dicts defining spectrum diagnostics, e.g.:
 

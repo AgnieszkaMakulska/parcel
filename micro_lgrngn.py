@@ -12,6 +12,8 @@ def _micro_init(aerosol, opts, state):
   for opt in ["dt", "sd_conc", "chem_rho", "sstp_cond","ice_switch","time_dep_ice_nucl"]:
     setattr(opts_init, opt, opts[opt])
   opts_init.n_sd_max = opts_init.sd_conc
+  if opts["rng_seed"] is not None:
+      opts_init.rng_seed = int(opts["rng_seed"])
 
   opts_init.th_dry = True
   opts_init.const_p = False
@@ -22,7 +24,6 @@ def _micro_init(aerosol, opts, state):
     lognormals = []
     for i in range(len(dct["mean_r"])):
       lognormals.append(lognormal(dct["mean_r"][i], dct["gstdev"][i], dct["n_tot"][i]))
-    print(dct["kappa"], dct["rd_insol"])
     dry_distros[(dct["kappa"], dct["rd_insol"])] = sum_of_lognormals(lognormals)
   opts_init.dry_distros = dry_distros
 
