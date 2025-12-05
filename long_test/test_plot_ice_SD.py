@@ -9,12 +9,9 @@ from parcel import parcel
 from scipy.io import netcdf
 from libcloudphxx import common
 
-def plot_profiles(fnc, output_folder="plots/outputs/"):
-
-    plt.figure(1, figsize=(15,5))
-    plots    = []
-    for i in range(2):
-        plots.append(plt.subplot(1,2,i+1))
+def plot_profiles(fnc, output_name):
+    plt.clf()
+    fig, plots = plt.subplots(1, 2, figsize=(15, 5))
     plots[0].set_xlabel('mixing ratio [g/kg]')
     plots[1].set_xlabel('T [K]')
     for ax in plots:
@@ -32,25 +29,26 @@ def plot_profiles(fnc, output_folder="plots/outputs/"):
     plots[0].legend(['r_tot', 'r_v', 'r_liq', 'r_ice'], loc='best')
     plots[1].plot(fnc.variables["T"][:], z)
 
-    if not os.path.exists(output_folder):
-        subprocess.call(["mkdir", output_folder])
-    plt.savefig(os.path.join(output_folder, "plot_profiles_ice_SD.png"))
+    if not os.path.exists("plots/outputs/"):
+        subprocess.call(["mkdir", "plots/outputs/"])
+    plt.savefig(os.path.join("plots/outputs/", output_name))
 
 def test_plot_ice_SD():   
-    outfile = "onesim_plot.nc"
-    parcel(dt=1.,w=1.,sd_conc=100,
-           z_max = 5000.0,
-           T_0 = 263.0,
-           RH_0 = 1.,
-           scheme = "lgrngn",
-           ice_switch=True,
-           ice_nucl=True,
-           time_dep_ice_nucl=False,
-           aerosol = '{"ammonium_sulfate": {"kappa": 0.61, "rd_insol": 0.5e-6, "mean_r": [0.02e-6], "gstdev": [1.4], "n_tot": [60.0e6]}}', 
-           outfreq = 100, 
-           out_bin= '{"liq": {"rght": 1, "moms": [0,3], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 5e-20}}',
-           outfile=outfile)
-    fnc = netcdf.netcdf_file(outfile)
-    plot_profiles(fnc)
-    fnc.close()
-    subprocess.call(["rm", outfile])
+    for (rd_insol, output_name) in [("0.5e-6", "ice_SD_plot_het.png"), ("0", "ice_SD_plot_hom.png")]:
+        outfile = "onesim_plot.nc"
+        parcel(dt=1.,w=1.,sd_conc=100,
+            z_max = 5000.0,
+            T_0 = 263.0,
+            RH_0 = 1.,
+            scheme = "lgrngn",
+            ice_switch=True,
+            ice_nucl=True,
+            time_dep_ice_nucl=True,
+            aerosol = '{"ammonium_sulfate": {"kappa": 0.61, "rd_insol": ' + rd_insol + ', "mean_r": [0.02e-6], "gstdev": [1.4], "n_tot": [60.0e6]}}', 
+            outfreq = 100, 
+            out_bin= '{"liq": {"rght": 1, "moms": [0,3], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 5e-20}}',
+            outfile=outfile)
+        fnc = netcdf.netcdf_file(outfile)
+        plot_profiles(fnc, output_name)
+        fnc.close()
+        subprocess.call(["rm", outfile])
