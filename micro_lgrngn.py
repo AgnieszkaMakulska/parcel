@@ -89,5 +89,5 @@ def _micro_step(micro, state, info, opts):
       state[id_str.replace('_g', '_a')] = np.frombuffer(micro.outbuf())[0]
   if micro.opts_init.ice_switch:
     micro.diag_ice()
-    micro.diag_ice_mass()
-    state["ice_mass"] = np.frombuffer(micro.outbuf())[0]
+    micro.diag_ice_mix_ratio()
+    state["ice_mix_ratio"] = np.frombuffer(micro.outbuf())[0]

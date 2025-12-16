@@ -7,7 +7,7 @@ This test runs the parcel model using three different microphysics schemes:
 It plots the evolution of rv, th_d, and total condensed water in different schemes. 
 """
 
-import sys
+import sys, os
 sys.path.insert(0, "../")
 sys.path.insert(0, "./")
 
@@ -52,6 +52,8 @@ def test_plot_schemes():
         ax[0].plot(rv, z, label=f"{scheme}", linestyle ='--' if scheme=='blk_1m_ice' else '-')
         ax[1].plot(th_d, z, label=f"{scheme}", linestyle ='--' if scheme=='blk_1m_ice' else '-')
         ax[2].plot(r_tot, z, label=f"{scheme}", linestyle ='--' if scheme=='blk_1m_ice' else '-')
+        os.remove(f"test_{scheme}.nc")
+        
     ax[0].set_ylabel("Height [m]")
     ax[0].set_xlabel("Water vapor mixing ratio")
     ax[1].set_xlabel("Dry potential temperature")

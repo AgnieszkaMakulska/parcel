@@ -7,7 +7,7 @@ This test runs the parcel model using three different microphysics schemes:
 It compares the final values of rv, th_d, and total condensed water in different schemes. 
 """
 
-import sys
+import sys, os
 sys.path.insert(0, "../")
 sys.path.insert(0, "./")
 
@@ -49,6 +49,8 @@ def test_compare_schemes():
         else:
             rv, th_d, r_tot, z = run_scheme(scheme, False, f"test_{scheme}.nc")
         results[scheme] = (rv, th_d, r_tot, z)
+        os.remove(f"test_{scheme}.nc")
+
     # Compare final values
     rv_vals = [results[s][0][-1] for s in schemes]
     th_d_vals = [results[s][1][-1] for s in schemes]

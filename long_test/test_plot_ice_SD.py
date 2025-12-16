@@ -20,7 +20,7 @@ def plot_profiles(fnc, output_name):
     z = fnc.variables["z"][:]
     r_v = fnc.variables["r_v"][:] * 1000  #g/kg
     r_liq = np.array([i[0] for i in fnc.variables['liq_m3'][:]]) *4/3 * np.pi * common.rho_w * 1000 #g/kg
-    r_ice = fnc.variables["ice_mass"][:] * 1000 #g/kg
+    r_ice = fnc.variables["ice_mix_ratio"][:] * 1000 #g/kg
 
     plots[0].plot(r_v + r_liq + r_ice, z)
     plots[0].plot(r_v, z)
