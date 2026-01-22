@@ -16,9 +16,18 @@ jobs:
 
     steps:
 
-    # === Build libcloudph++ first ===
+    - uses: actions/checkout@v6
+
+    # === Load apptainer image ===
+    - name: load UWLCM Apptainer image
+      uses: igfuw/load_UWLCM_singularity_image@main
+      with:
+        path: ${{ github.workspace }}/singularity_images
+        tag: uwlcm_ubuntu_24_04_cuda_12_9_0
+
+    # === Build libcloudph++ ===
     - name: Checkout libcloudph++ repo
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         repository: igfuw/libcloudphxx
         path: libcloudphxx
@@ -30,10 +39,8 @@ jobs:
         build_type: ${{ matrix.build_type }}
         threads: 4
         path: ${{ github.workspace }}/libcloudphxx
+        singularity_path: ${{ github.workspace }}/singularity_images
         install_prefix: ${{ github.workspace }}/installed
-
-    - name: Install libcloudph++
-      run: sudo cmake --install libcloudphxx/build
 
     # === Prepare environment ===
     - name: Set PYTHONPATH
@@ -44,7 +51,7 @@ jobs:
 
     # === Run parcel tests ===
     - name: checkout parcel repo
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         repository: igfuw/parcel
         path: parcel
