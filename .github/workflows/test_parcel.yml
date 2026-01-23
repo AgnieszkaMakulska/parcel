@@ -15,11 +15,9 @@ jobs:
         build_type: ["RelWithDebInfoPortable", "Debug"]
 
     steps:
-
     - uses: actions/checkout@v6
 
     # === Build libcloudph++ ===
-
     - name: Create install folder
       run: mkdir -p ${{ github.workspace }}/installed
 
@@ -39,12 +37,17 @@ jobs:
         singularity_path: ${{ github.workspace }}/singularity_images
         install_prefix: ${{ github.workspace }}/installed
 
-    # === Prepare environment ===
-    - name: Set PYTHONPATH
-      run: echo "PYTHONPATH=${{ github.workspace }}/installed$(python3 -c 'import sysconfig; print(sysconfig.get_path("platlib"))')" >> $GITHUB_ENV
+    - name: Clean up libcloudphxx source
+      run: rm -rf ${{ github.workspace }}/libcloudphxx
 
-    - name: Check PYTHONPATH
-      run: echo ${PYTHONPATH}
+    # === Prepare environment ===
+    - name: Set PYTHONPATH for Apptainer
+      run: |
+        PY_LIB_PATH=$(python3 -c 'import sysconfig; print(sysconfig.get_path("platlib"))')
+        FULL_PATH="${{ github.workspace }}/installed${PY_LIB_PATH}"
+        
+        echo "PYTHONPATH=$FULL_PATH" >> $GITHUB_ENV
+        echo "APPTAINERENV_PYTHONPATH=$FULL_PATH" >> $GITHUB_ENV
 
     # === Run parcel tests ===
     - name: checkout parcel repo
@@ -54,15 +57,19 @@ jobs:
         path: parcel
 
     - name: Create output folder
-      run: mkdir parcel/plots/outputs
+      run: mkdir -p parcel/plots/outputs
 
     - name: run parcel tests
-      working-directory: ${{github.workspace}}/parcel
-      run: apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v unit_test
+      working-directory: ${{ github.workspace }}/parcel
+      run: |
+        apptainer exec -B ${{ github.workspace }} $SI python3 -m pytest -s -v unit_test
 
     - name: run long tests
-      working-directory: ${{github.workspace}}/parcel
-      run: apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v long_test
+      working-directory: ${{ github.workspace }}/parcel
+      run: |
+        apptainer exec -B ${{ github.workspace }} $SI python3 -m pytest -s -v long_test
+
     - name: run unit tests debug
-      working-directory: ${{github.workspace}}/parcel
-      run: apptainer exec -B${{ github.workspace }}/installed $SI python3 -m pytest -s -v unit_test_debug
+      working-directory: ${{ github.workspace }}/parcel
+      run: |
+        apptainer exec -B ${{ github.workspace }} $SI python3 -m pytest -s -v unit_test_debug
