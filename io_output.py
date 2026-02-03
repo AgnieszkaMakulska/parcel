@@ -86,6 +86,10 @@ def _output_init(micro, opts, spectra):
     fout.createVariable(var_name, 'd', ('t',))
     fout.variables[var_name].unit = unit
 
+  if micro.opts_init.ice_switch:
+    fout.createVariable("ice_mix_ratio", 'd', ('t',))
+    fout.variables["ice_mix_ratio"].unit = "kg/kg"
+
   return fout
 
 

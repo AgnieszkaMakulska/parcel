@@ -65,9 +65,9 @@ def _p_hydro_const_th_rv(z_lev, p_0, th_std, r_v, z_0=0.):
   # hydrostatic pressure assuming constatnt theta and r_v
   return common.p_hydro(z_lev, th_std, r_v, z_0, p_0)
 
-def _arguments_checking(opts, spectra, aerosol, scheme):
-  if opts["T_0"] < 273.15 and scheme != "blk_1m_ice":
-    raise Exception("temperature should be larger than 0C for schemes other than blk_1m_ice")
+def _arguments_checking(opts, spectra, aerosol, ice_switch):
+  if opts["T_0"] < 273.15 and ice_switch == False:
+    raise Exception("temperature should be larger than 0C if ice_switch=False")
   elif ((opts["r_0"] >= 0) and (opts["RH_0"] >= 0)):
     raise Exception("both r_0 and RH_0 specified, please use only one")
   if opts["w"] < 0:

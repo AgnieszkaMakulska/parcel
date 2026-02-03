@@ -7,7 +7,7 @@ This test runs the parcel model using three different microphysics schemes:
 It plots the evolution of rv, th_d, and total condensed water in different schemes. 
 """
 
-import sys
+import sys, os
 sys.path.insert(0, "../")
 sys.path.insert(0, "./")
 
@@ -16,7 +16,7 @@ from parcel import parcel
 from scipy.io import netcdf
 import matplotlib.pyplot as plt
 
-def run_scheme(scheme, outfile):
+def run_scheme(scheme, ice_switch, outfile):
     args = dict(
         dt=0.1,
         z_max=800,
@@ -26,6 +26,7 @@ def run_scheme(scheme, outfile):
         outfile=outfile,
         outfreq=50,
         scheme=scheme,
+        ice_switch=ice_switch,
         out_bin='{"radius": {"rght": 1, "moms": [3], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 1e-15}}'
     )
     parcel(**args)
@@ -44,10 +45,15 @@ def test_plot_schemes():
     schemes = ["lgrngn", "blk_1m", "blk_1m_ice"]
     fig, ax = plt.subplots(1,3, figsize=(12, 6))
     for scheme in schemes:
-        rv, th_d, r_tot, z = run_scheme(scheme, f"test_{scheme}.nc")
+        if scheme == "blk_1m_ice":
+            rv, th_d, r_tot, z = run_scheme("blk_1m", True, f"test_{scheme}.nc")
+        else:
+            rv, th_d, r_tot, z = run_scheme(scheme, False, f"test_{scheme}.nc")
         ax[0].plot(rv, z, label=f"{scheme}", linestyle ='--' if scheme=='blk_1m_ice' else '-')
         ax[1].plot(th_d, z, label=f"{scheme}", linestyle ='--' if scheme=='blk_1m_ice' else '-')
         ax[2].plot(r_tot, z, label=f"{scheme}", linestyle ='--' if scheme=='blk_1m_ice' else '-')
+        os.remove(f"test_{scheme}.nc")
+        
     ax[0].set_ylabel("Height [m]")
     ax[0].set_xlabel("Water vapor mixing ratio")
     ax[1].set_xlabel("Dry potential temperature")

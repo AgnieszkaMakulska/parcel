@@ -7,7 +7,7 @@ This test runs the parcel model using three different microphysics schemes:
 It compares the final values of rv, th_d, and total condensed water in different schemes. 
 """
 
-import sys
+import sys, os
 sys.path.insert(0, "../")
 sys.path.insert(0, "./")
 
@@ -15,7 +15,7 @@ import numpy as np
 from parcel import parcel
 from scipy.io import netcdf
 
-def run_scheme(scheme, outfile):
+def run_scheme(scheme, ice_switch, outfile):
     args = dict(
         dt=0.1,
         z_max=800,
@@ -25,6 +25,7 @@ def run_scheme(scheme, outfile):
         outfile=outfile,
         outfreq=50,
         scheme=scheme,
+        ice_switch=ice_switch,
         out_bin='{"radius": {"rght": 1, "moms": [3], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 1e-15}}'
     )
     parcel(**args)
@@ -43,8 +44,13 @@ def test_compare_schemes():
     schemes = ["lgrngn", "blk_1m", "blk_1m_ice"]
     results = {}
     for scheme in schemes:
-        rv, th_d, r_tot, z = run_scheme(scheme, f"test_{scheme}.nc")
+        if scheme == "blk_1m_ice":
+            rv, th_d, r_tot, z = run_scheme("blk_1m", True, f"test_{scheme}.nc")
+        else:
+            rv, th_d, r_tot, z = run_scheme(scheme, False, f"test_{scheme}.nc")
         results[scheme] = (rv, th_d, r_tot, z)
+        os.remove(f"test_{scheme}.nc")
+
     # Compare final values
     rv_vals = [results[s][0][-1] for s in schemes]
     th_d_vals = [results[s][1][-1] for s in schemes]
@@ -54,3 +60,4 @@ def test_compare_schemes():
     for i in range(1, len(schemes)):
       assert np.isclose(rv_vals[0], rv_vals[i], rtol=5e-4), f"r_v differs: {rv_vals[0]} vs {rv_vals[i]}"
       assert np.isclose(th_d_vals[0], th_d_vals[i], rtol=5e-4), f"th_d differs: {th_d_vals[0]} vs {th_d_vals[i]}"
+      assert np.isclose(r_tot_vals[0], r_tot_vals[i], rtol=1e-2), f"r_tot differs: {r_tot_vals[0]} vs {r_tot_vals[i]}"

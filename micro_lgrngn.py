@@ -9,9 +9,11 @@ def _micro_init(aerosol, opts, state):
 
   # lagrangian scheme options
   opts_init = lgrngn.opts_init_t()
-  for opt in ["dt", "sd_conc", "chem_rho", "sstp_cond"]:
+  for opt in ["dt", "sd_conc", "chem_rho", "sstp_cond","ice_switch","time_dep_ice_nucl"]:
     setattr(opts_init, opt, opts[opt])
   opts_init.n_sd_max = opts_init.sd_conc
+  if opts["rng_seed"] is not None:
+      opts_init.rng_seed = int(opts["rng_seed"])
 
   opts_init.th_dry = True
   opts_init.const_p = False
@@ -22,7 +24,7 @@ def _micro_init(aerosol, opts, state):
     lognormals = []
     for i in range(len(dct["mean_r"])):
       lognormals.append(lognormal(dct["mean_r"][i], dct["gstdev"][i], dct["n_tot"][i]))
-    dry_distros[dct["kappa"]] = sum_of_lognormals(lognormals)
+    dry_distros[(dct["kappa"], opts["rd_insol"])] = sum_of_lognormals(lognormals)
   opts_init.dry_distros = dry_distros
 
   # better resolution for the SD tail
@@ -57,6 +59,7 @@ def _micro_step(micro, state, info, opts):
   libopts.coal = False
   libopts.adve = False
   libopts.sedi = False
+  libopts.ice_nucl = opts["ice_nucl"]
 
   # chemical options
   if micro.opts_init.chem_switch:
@@ -84,3 +87,7 @@ def _micro_step(micro, state, info, opts):
       # save changes due to chemistry
       micro.diag_chem(id_int)
       state[id_str.replace('_g', '_a')] = np.frombuffer(micro.outbuf())[0]
+  if micro.opts_init.ice_switch:
+    micro.diag_ice()
+    micro.diag_ice_mix_ratio()
+    state["ice_mix_ratio"] = np.frombuffer(micro.outbuf())[0]

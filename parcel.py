@@ -24,13 +24,16 @@ from micro_blk_1m import _opts_init_blk_1m, _micro_step_blk_1m
 from micro_blk_1m_ice import _opts_init_blk_1m_ice, _micro_step_blk_1m_ice
 from io_output import _output_bins, _output_init, _output_init_blk_1m, _output_init_blk_1m_ice, _output_save, _save_attrs, _output
 
-def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
-  r_0=-1., RH_0=-1.,
-  outfile="test.nc",
-  pprof="pprof_piecewise_const_rhod", 
-  outfreq=100,
-  scheme="lgrngn", # parameter to select scheme
-  sd_conc=64,
+def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
+  r_0 = -1., RH_0 = -1.,
+  outfile = "test.nc",
+  pprof = "pprof_piecewise_const_rhod", 
+  outfreq = 100,
+  scheme = "lgrngn", # microphysics scheme: lgrngn, blk_1m
+  ice_switch = False,
+  ice_nucl = False,
+  time_dep_ice_nucl = False,
+  sd_conc = 64,
   aerosol = '{"ammonium_sulfate": {"kappa": 0.61, "mean_r": [0.02e-6], "gstdev": [1.4], "n_tot": [60.0e6]}}',
   out_bin = '{"radii": {"rght": 0.01, "moms": [0], "drwt": "wet", "nbin": 1, "lnli": "log", "left": 1e-15}}',
   SO2_g = 0., O3_g = 0., H2O2_g = 0., CO2_g = 0., HNO3_g = 0., NH3_g = 0.,
@@ -39,7 +42,9 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
   sstp_cond = 1,
   sstp_chem = 1,
   wait = 0,
-  large_tail = False
+  large_tail = False,
+  rng_seed = None,
+  rd_insol  = 0.
 ):
   """
   Args:
@@ -50,6 +55,10 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
     p_0     (Optional[float]):    initial pressure [Pa]
     r_0     (Optional[float]):    initial water vapour mass mixing ratio [kg/kg]
     RH_0    (Optional[float]):    initial relative humidity
+    scheme  (Optional[string]):   microphysics scheme to use: 'lgrngn', 'blk_1m'
+    ice_switch (Optional[bool]):  enable ice microphysics
+    ice_nucl (Optional[bool]):    enable ice nucleation in lagrangian scheme
+    time_dep_ice_nucl (Optional[bool]): enable time-dependent ice nucleation in lagrangian scheme
     outfile (Optional[string]):   output netCDF file name
     outfreq (Optional[int]):      output interval (in number of time steps)
     pprof   (Optional[string]):   method to calculate pressure profile used to calculate
@@ -71,6 +80,8 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
                                                  conditions (T=20C, p=1013.25 hPa, rv=0) [m^-3]            (list if multimodal distribution)
 
     large_tail (Optional[bool]) : use more SD to better represent the large tail of the initial aerosol distribution
+
+    rng_seed (Optional[int]) :  seed for random number generator
 
     out_bin (Optional[json str]): dict of dicts defining spectrum diagnostics, e.g.:
 
@@ -126,7 +137,7 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
     r_0 = common.eps * opts["RH_0"] * common.p_vs(T_0) / (p_0 - opts["RH_0"] * common.p_vs(T_0))
 
   # sanity checks for arguments
-  _arguments_checking(opts, spectra, aerosol, scheme)
+  _arguments_checking(opts, spectra, aerosol, ice_switch)
 
   th_0 = T_0 * (common.p_1000 / p_0)**(common.R_d / common.c_pd)
   nt = int(z_max / (w * dt))
@@ -138,15 +149,15 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
     "T" : None, "RH" : None
   }
 
+  if scheme == "lgrngn" and ice_switch:
+    state["ice_mix_ratio"] = np.array([0.0])
+
   if scheme == "blk_1m":
     state["rc"] = np.array([0.0])  # initial cloud water
     state["rr"] = np.array([0.0])  # initial rain water
-
-  if scheme == "blk_1m_ice":
-    state["rc"] = np.array([0.0])  # initial cloud water
-    state["rr"] = np.array([0.0])  # initial rain water
-    state["ria"] = np.array([0.0])  # initial ice A
-    state["rib"] = np.array([0.0])  # initial ice B
+    if ice_switch:
+      state["ria"] = np.array([0.0])  # initial ice A
+      state["rib"] = np.array([0.0])  # initial ice B
 
   if opts["chem_dsl"] or opts["chem_dsc"] or opts["chem_rct"]:
     for key in _Chem_g_id.keys():
@@ -161,14 +172,14 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
   if scheme == "lgrngn":
       micro = _micro_init_lgrngn(aerosol, opts, state)
       fout = _output_init(micro, opts, spectra)
-  elif scheme == "blk_1m":
+  elif scheme == "blk_1m" and not ice_switch:
       micro_opts = _opts_init_blk_1m()
       fout = _output_init_blk_1m(opts)
-  elif scheme == "blk_1m_ice":
+  elif scheme == "blk_1m" and ice_switch:
       micro_opts = _opts_init_blk_1m_ice()
       fout = _output_init_blk_1m_ice(opts)
   else:
-      raise ValueError("Unknown scheme type. Use 'lgrngn', 'blk_1m' or 'blk_1m_ice'.")
+      raise ValueError("Unknown scheme type. Use 'lgrngn', 'blk_1m'.")
     
   with fout:
       # adding chem state vars - only for lgrngn scheme
@@ -183,7 +194,7 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
       # t=0 : init & save
       if scheme == "lgrngn":
           _output(fout, opts, micro, state, 0, spectra)
-      elif scheme == "blk_1m" or scheme == "blk_1m_ice":
+      elif scheme == "blk_1m":
           _output_save(fout, state, 0)  # simpler output for blk_1m
 
       # timestepping
@@ -230,9 +241,9 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
         # microphysics
         if scheme == "lgrngn":
           _micro_step_lgrngn(micro, state, info, opts)
-        elif scheme == "blk_1m":
+        elif scheme == "blk_1m" and not ice_switch:
           _micro_step_blk_1m(micro_opts, state, info, opts)
-        elif scheme == "blk_1m_ice":
+        elif scheme == "blk_1m" and ice_switch:
           _micro_step_blk_1m_ice(micro_opts, state, info, opts)
 
         # TODO: only if user wants to stop @ RH_max
@@ -244,7 +255,7 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
           rec = it/outfreq
           if scheme == "lgrngn":
             _output(fout, opts, micro, state, rec, spectra)
-          elif scheme == "blk_1m" or scheme == "blk_1m_ice":
+          elif scheme == "blk_1m":
             _output_save(fout, state, rec)
 
       _save_attrs(fout, info)
@@ -255,16 +266,16 @@ def parcel(dt=.1, z_max=200., w=1., T_0=300., p_0=101300.,
           state["t"] = it * dt
           if scheme == "lgrngn":
             _micro_step_lgrngn(micro, state, info, opts)
-          elif scheme == "blk_1m":
+          elif scheme == "blk_1m" and not ice_switch:
             _micro_step_blk_1m(micro_opts, state, info, opts)
-          elif scheme == "blk_1m_ice":
+          elif scheme == "blk_1m" and ice_switch:
             _micro_step_blk_1m_ice(micro_opts, state, info, opts)
 
           if (it % outfreq == 0):
             rec = it/outfreq
             if scheme == "lgrngn":
               _output(fout, opts, micro, state, rec, spectra)
-            elif scheme == "blk_1m" or scheme == "blk_1m_ice":
+            elif scheme == "blk_1m":
               _output_save(fout, state, rec)
 
 # ensuring that pure "import parcel" does not trigger any simulation
