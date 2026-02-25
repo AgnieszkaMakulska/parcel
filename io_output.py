@@ -91,9 +91,16 @@ def _output_init(micro, opts, spectra):
     fout.createVariable("ice_mix_ratio", 'd', ('t',))
     fout.variables["ice_mix_ratio"].unit = "kg/kg"
 
+    fout.createVariable("ice_mom0", 'd', ('t',))
+    fout.variables["ice_mom0"].unit = "1/kg"
+
+    fout.createVariable("liq_mom0", 'd', ('t',))
+    fout.variables["liq_mom0"].unit = "1/kg"
+
   # if micro.opts_init.exact_sstp_cond:
-  fout.createVariable("sstp_cond_mean", 'd', ('t',))
-  fout.variables["sstp_cond_mean"].unit = "1"
+  if micro.opts_init.adaptive_sstp_cond:
+    fout.createVariable("sstp_cond_mean", 'd', ('t',))
+    fout.variables["sstp_cond_mean"].unit = "1"
 
   fout.createVariable("act_m0", 'd', ('t',))
   fout.variables["act_m0"].unit = "1/kg"

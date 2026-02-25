@@ -39,11 +39,14 @@ def _micro_init(aerosol, opts, state):
   # dry_distros from lognormal spec (opts['aerosol'])
   if aerosol is not None and isinstance(aerosol, dict) and len(aerosol) > 0:
     dry_distros = {}
+    rd_insol_list = opts.get("rd_insol_list", [opts.get("rd_insol", 0.0)])
     for name, dct in aerosol.items():
       lognormals = []
       for i in range(len(dct["mean_r"])):
         lognormals.append(lognormal(dct["mean_r"][i], dct["gstdev"][i], dct["n_tot"][i]))
-      dry_distros[(float(dct["kappa"]), float(opts["rd_insol"]))] = sum_of_lognormals(lognormals)
+      # create spectrum for each rd_insol value
+      for rd_insol in rd_insol_list:
+        dry_distros[(float(dct["kappa"]), float(rd_insol))] = sum_of_lognormals(lognormals)
     opts_init.dry_distros = dry_distros
 
   # dry_sizes from discrete bins (opts['dry_sizes'])
@@ -54,6 +57,7 @@ def _micro_init(aerosol, opts, state):
       raise ValueError("dry_sizes must be a non-empty dict when provided")
 
     dry_sizes = {}
+    rd_insol_list = opts.get("rd_insol_list", [opts.get("rd_insol", 0.0)])
     for name, dct in ds.items():
       print(name, dct)
       if "kappa" not in dct or "bins" not in dct:
@@ -75,7 +79,9 @@ def _micro_init(aerosol, opts, state):
         bins_parsed[rd] = [conc, n_sd]
 
       print(bins_parsed)
-      dry_sizes[(kappa, float(opts["rd_insol"]))] = bins_parsed
+      # create spectrum for each rd_insol value
+      for rd_insol in rd_insol_list:
+        dry_sizes[(kappa, float(rd_insol))] = bins_parsed
       print(dry_sizes)
 
     opts_init.dry_sizes = dry_sizes
@@ -166,17 +172,23 @@ def _micro_step(micro, state, info, opts):
     micro.diag_ice()
     micro.diag_ice_mix_ratio()
     state["ice_mix_ratio"] = np.frombuffer(micro.outbuf())[0]
-  # if micro.opts_init.exact_sstp_cond:
-  try: # depending on options, sstp_cond_avg may not be available
+
+    micro.diag_ice()
+    micro.diag_ice_a_mom(0)
+    state["ice_mom0"] = np.frombuffer(micro.outbuf())[0]
+
+    micro.diag_water()
+    micro.diag_wet_mom(0)
+    state["liq_mom0"] = np.frombuffer(micro.outbuf())[0]
+
+  if micro.opts_init.adaptive_sstp_cond:
     micro.diag_all()
     mom1 = micro.diag_sstp_cond_mom(1)
     mom1 = np.frombuffer(micro.outbuf())[0]
     mom0 = micro.diag_sstp_cond_mom(0)
     mom0 = np.frombuffer(micro.outbuf())[0]
-    state["sstp_cond_mean"] = mom1/mom0
-    print("sstp_cond_mean: ", state["sstp_cond_mean"])
-  except Exception:
-    state["sstp_cond_mean"] = np.full_like(state["th_d"], np.nan)
+    state["sstp_cond_mean"] = mom1/mom0#
+    #print("sstp_cond_mean: ", state["sstp_cond_mean"])
 
   micro.diag_rw_ge_rc()
   mom0 = micro.diag_wet_mom(0)

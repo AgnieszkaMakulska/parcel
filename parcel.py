@@ -53,8 +53,8 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
   sstp_cond_act = None,
   sstp_cond_mix = None,
   exact_sstp_cond = None,
-  aerosol_independent_of_rhod = None
-  ,backend = "serial"
+  aerosol_independent_of_rhod = None,
+  backend = "serial"
 ):
   """
   Args:
@@ -157,8 +157,7 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
     sstp_cond_mix (Optional[bool]):   on/off mixing of thermodynamic variables between superdroplets after each condensation substep
     exact_sstp_cond (Optional[bool]): on/off for per-particle condensation substepping (per-cell if off)
 
-    # Misc
-    rd_insol (Optional[float]):   insoluble dry radius offset/addition used by selected microphysics (if applicable) [m]
+    rd_insol (Optional[float|list]):   insoluble dry radius [m]. Can be a single value or a list of values. If a list, a spectrum will be initialized for each value.
 
    """
   # packing function arguments into "opts" dictionary
@@ -180,6 +179,13 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
 
   # parsing json specification of output spectra
   spectra = json.loads(opts["out_bin"])
+
+  # normalize rd_insol to a list
+  if isinstance(opts["rd_insol"], (list, tuple, np.ndarray)):
+    rd_insol_list = list(opts["rd_insol"])
+  else:
+    rd_insol_list = [float(opts["rd_insol"])]
+  opts["rd_insol_list"] = rd_insol_list
 
   # parsing json specification of init aerosol spectra (if provided)
   aerosol = json.loads(opts["aerosol"]) if isinstance(opts.get("aerosol"), str) else opts.get("aerosol")
@@ -349,14 +355,14 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
         # TODO: only if user wants to stop @ RH_max
         #if (state["RH"] < info["RH_max"]): break
 
-        # output
-        if (it % outfreq == 0):
-          # if nt is not None and nt > 0:
-          #   print(str(round(it / (nt * 1.) * 100, 2)) + " %")
-          if opts["t"] is not None:
-            print(str(round(state["t"] / (opts["t"] * 1.) * 100, 2)) + " %")
-          if opts["z_max"] is not None:
-            print(str(round(state["z"], 1)) + " / " + str(opts["z_max"]) + " m")
+        # # output
+        # if (it % outfreq == 0):
+        #   # if nt is not None and nt > 0:
+        #   #   print(str(round(it / (nt * 1.) * 100, 2)) + " %")
+        #   if opts["t"] is not None:
+        #     print(str(round(state["t"] / (opts["t"] * 1.) * 100, 2)) + " %")
+        #   if opts["z_max"] is not None:
+        #     print(str(round(state["z"], 1)) + " / " + str(opts["z_max"]) + " m")
           
           rec = it/outfreq
           if scheme == "lgrngn":
