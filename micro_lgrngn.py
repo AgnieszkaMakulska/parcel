@@ -168,18 +168,13 @@ def _micro_step(micro, state, info, opts):
       # save changes due to chemistry
       micro.diag_chem(id_int)
       state[id_str.replace('_g', '_a')] = np.frombuffer(micro.outbuf())[0]
+
   if micro.opts_init.ice_switch:
     micro.diag_ice()
     micro.diag_ice_mix_ratio()
     state["ice_mix_ratio"] = np.frombuffer(micro.outbuf())[0]
-
-    micro.diag_ice()
     micro.diag_ice_a_mom(0)
-    state["ice_mom0"] = np.frombuffer(micro.outbuf())[0]
-
-    micro.diag_water()
-    micro.diag_wet_mom(0)
-    state["liq_mom0"] = np.frombuffer(micro.outbuf())[0]
+    state["ice_conc"] = np.frombuffer(micro.outbuf())[0]
 
   if micro.opts_init.adaptive_sstp_cond:
     micro.diag_all()
@@ -187,8 +182,7 @@ def _micro_step(micro, state, info, opts):
     mom1 = np.frombuffer(micro.outbuf())[0]
     mom0 = micro.diag_sstp_cond_mom(0)
     mom0 = np.frombuffer(micro.outbuf())[0]
-    state["sstp_cond_mean"] = mom1/mom0#
-    #print("sstp_cond_mean: ", state["sstp_cond_mean"])
+    state["sstp_cond_mean"] = mom1/mom0
 
   micro.diag_rw_ge_rc()
   mom0 = micro.diag_wet_mom(0)

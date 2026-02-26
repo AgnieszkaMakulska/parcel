@@ -32,7 +32,8 @@ def run_scheme(w_max, adaptive, outfile, *, sstp_cond=sstp_cond_max):
         outfile=outfile,
         outfreq=10,
         scheme="lgrngn",
-        out_bin='{"cloud": {"rght": 1, "moms": [0,1,3], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-10}}',
+        out_bin='{"liq": {"rght": 1, "moms": [0,1,3], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-10},' \
+                '"ice": {"rght": 1, "moms": [0,1,3], "drwt": "ice_a", "nbin": 1, "lnli": "lin", "left": 0.5e-10}}',
         sstp_cond=sstp_cond,
         adaptive_sstp_cond=adaptive,
         sstp_cond_adapt_drw2_eps=None,
@@ -72,12 +73,11 @@ def run_scheme(w_max, adaptive, outfile, *, sstp_cond=sstp_cond_max):
         sstp_cond_mean = np.array(f.variables['sstp_cond_mean'][:]) if 'sstp_cond_mean' in f.variables else None
         if sstp_cond_mean is not None:
             sstp_cond_mean[0] = sstp_cond_mean[1] # at t=0 sstp_cond_mean=0, because its set only during the firs step (?)
-        ice_mix_ratio = np.array(f.variables['ice_mix_ratio'][:]) if 'ice_mix_ratio' in f.variables else None
-        liq_mom3 = np.array(f.variables['cloud_m3'][:])
-        liq_mix_ratio = liq_mom3 *4/3 * np.pi * 997 #multiply by density of water
-        liq_mom0 = np.array(f.variables['liq_mom0'][:])
-        ice_mom0 = np.array(f.variables['ice_mom0'][:])
-    return RH, T, z, sstp_cond_mean, ice_mix_ratio, liq_mix_ratio, liq_mom0, ice_mom0
+        ice_mix_ratio = np.array(f.variables['ice_mix_ratio'][:])
+        liq_mix_ratio = np.array(f.variables['liq_m3'][:]) *4/3 * np.pi * 997 #multiply by density of water
+        liq_conc = np.array(f.variables['liq_m0'][:])  # 1/kg
+        ice_conc = np.array(f.variables['ice_m0'][:])  # 1/kg
+    return RH, T, z, sstp_cond_mean, ice_mix_ratio, liq_mix_ratio, liq_conc, ice_conc
 
 
 # baseline - basically no adaptation, very relaxed conditions
@@ -105,19 +105,19 @@ def make_figure(aerosol_name, aerosol, xmax):
     run_scheme.sstp_cond_act = baseline["act"]
 
     outfile = f"test_adaptive_sstp_cond_{aerosol_name}_w{w_max:g}_eps{eps:.0e}_adapt1.nc"
-    RH, T, z, sstp_cond_mean, ice_mix_ratio, liq_mix_ratio, liq_mom0, ice_mom0 = run_scheme(w_max, True, outfile)
+    RH, T, z, sstp_cond_mean, ice_mix_ratio, liq_mix_ratio, liq_conc, ice_conc = run_scheme(w_max, True, outfile)
     generated_nc_files.append(outfile)
 
 
     ax[0,0].plot(ice_mix_ratio, z, label="ice")
     ax[0,0].plot(liq_mix_ratio, z, label="liq")
     ax[0,0].legend()
-    ax[0, 0].set_title(f"eps={eps:.0e}")
-    ax[0, 0].set_ylabel(f"w_max={w_max:g}\nHeight [m]")
+    ax[0,0].set_title(f"eps={eps:.0e}")
+    ax[0,0].set_ylabel(f"w_max={w_max:g}\nHeight [m]")
     ax[0,0].set_xlabel('LWC')
 
-    ax[0,1].plot(liq_mom0 / 1e6, z, label="liquid")
-    ax[0,1].plot(ice_mom0 / 1e6, z, label="ice")
+    ax[0,1].plot(liq_conc / 1e6, z, label="liquid")
+    ax[0,1].plot(ice_conc / 1e6, z, label="ice")
     ax[0,1].legend()
     ax[0,1].set_xlabel("number conc. [1/mg]")
 
@@ -128,16 +128,8 @@ def make_figure(aerosol_name, aerosol, xmax):
     fig.suptitle("Adaptive substepping, " + aerosol_name)
     fig.tight_layout(rect=(0, 0.10, 1, 0.97))
 
-    # # shared colorbar
-    # sm = plt.cm.ScalarMappable(cmap=cmap_dt, norm=norm_dt)
-    # sm.set_array([])
-    # cax = fig.add_axes([0.15, 0.04, 0.70, 0.025])
-    # cbar = fig.colorbar(sm, cax=cax, orientation="horizontal")
-    # cbar.set_label("sstp_cond_mean [1]")
-
     out_png = "test_adaptive_sstp_cond_"+aerosol_name+".png"
     plt.savefig(out_png, dpi=200)
-
 
     return fig
 
