@@ -39,14 +39,12 @@ def _micro_init(aerosol, opts, state):
   # dry_distros from lognormal spec (opts['aerosol'])
   if aerosol is not None and isinstance(aerosol, dict) and len(aerosol) > 0:
     dry_distros = {}
-    rd_insol_list = opts.get("rd_insol_list", [opts.get("rd_insol", 0.0)])
     for name, dct in aerosol.items():
       lognormals = []
       for i in range(len(dct["mean_r"])):
         lognormals.append(lognormal(dct["mean_r"][i], dct["gstdev"][i], dct["n_tot"][i]))
-      # create spectrum for each rd_insol value
-      for rd_insol in rd_insol_list:
-        dry_distros[(float(dct["kappa"]), float(rd_insol))] = sum_of_lognormals(lognormals)
+      dry_distros[(float(dct["kappa"]), float(dct["rd_insol"]))] = sum_of_lognormals(lognormals)
+      print(float(dct["rd_insol"]))
     opts_init.dry_distros = dry_distros
 
   # dry_sizes from discrete bins (opts['dry_sizes'])
@@ -57,12 +55,12 @@ def _micro_init(aerosol, opts, state):
       raise ValueError("dry_sizes must be a non-empty dict when provided")
 
     dry_sizes = {}
-    rd_insol_list = opts.get("rd_insol_list", [opts.get("rd_insol", 0.0)])
     for name, dct in ds.items():
       print(name, dct)
-      if "kappa" not in dct or "bins" not in dct:
-        raise ValueError("Each dry_sizes mode must define 'kappa' and 'bins'")
+      if "kappa" not in dct or "rd_insol" not in dct or "bins" not in dct:
+        raise ValueError("Each dry_sizes mode must define 'kappa', 'rd_insol' and 'bins'")
       kappa = float(dct["kappa"])
+      rd_insol = float(dct["rd_insol"])
       bins = dct["bins"]
       if not isinstance(bins, dict) or len(bins) == 0:
         raise ValueError("dry_sizes 'bins' must be a non-empty dict of radius->[conc, n_sd]")
@@ -79,9 +77,7 @@ def _micro_init(aerosol, opts, state):
         bins_parsed[rd] = [conc, n_sd]
 
       print(bins_parsed)
-      # create spectrum for each rd_insol value
-      for rd_insol in rd_insol_list:
-        dry_sizes[(kappa, float(rd_insol))] = bins_parsed
+      dry_sizes[(kappa, rd_insol)] = bins_parsed
       print(dry_sizes)
 
     opts_init.dry_sizes = dry_sizes

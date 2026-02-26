@@ -35,7 +35,7 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
   time_dep_ice_nucl = False,
   depo = False,
   sd_conc = 64,
-  aerosol = '{"ammonium_sulfate": {"kappa": 0.61, "mean_r": [0.02e-6], "gstdev": [1.4], "n_tot": [60.0e6]}}',
+  aerosol = '{"ammonium_sulfate": {"kappa": 0.61, "rd_insol": 0.0, "mean_r": [0.02e-6], "gstdev": [1.4], "n_tot": [60.0e6]}}',
   dry_sizes = None,
   out_bin = '{"radii": {"rght": 0.01, "moms": [0], "drwt": "wet", "nbin": 1, "lnli": "log", "left": 1e-15}}',
   SO2_g = 0., O3_g = 0., H2O2_g = 0., CO2_g = 0., HNO3_g = 0., NH3_g = 0.,
@@ -46,7 +46,6 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
   wait = 0,
   large_tail = False,
   rng_seed = None,
-  rd_insol  = 0.,
   t = None,
   adaptive_sstp_cond = None,
   sstp_cond_adapt_drw2_eps = None,
@@ -93,6 +92,7 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
                                    "gccn"            : {"kappa": 1.28, "mean_r": [2e-6],             "gstdev": [1.6],      "n_tot": [1e2]}}
 
                                   where kappa  - hygroscopicity parameter (see doi:10.5194/acp-7-1961-2007)
+                                        rd_insol - insoluble dry radius
                                         mean_r - lognormal distribution mean radius [m]                    (list if multimodal distribution)
                                         gstdev - lognormal distribution geometric standard deviation       (list if multimodal distribution)
                                         n_tot  - lognormal distribution total concentration under standard
@@ -104,6 +104,7 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
                                       {
                                         "ammonium_sulfate": {
                                           "kappa": 0.61,
+                                          "rd_insol": 0.0,
                                           "bins": {
                                             "1e-6":  [30.0, 15],
                                             "15e-6": [10.0,  5]
@@ -158,9 +159,6 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
     sstp_cond_act (Optional[int]):    substeps for (de)activating droplets
     sstp_cond_mix (Optional[bool]):   on/off mixing of thermodynamic variables between superdroplets after each condensation substep
     exact_sstp_cond (Optional[bool]): on/off for per-particle condensation substepping (per-cell if off)
-
-    rd_insol (Optional[float|list]):   insoluble dry radius [m]. Can be a single value or a list of values. If a list, a spectrum will be initialized for each value.
-
    """
   # packing function arguments into "opts" dictionary
   args, _, _, _ = inspect.getargvalues(inspect.currentframe())
@@ -181,13 +179,6 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
 
   # parsing json specification of output spectra
   spectra = json.loads(opts["out_bin"])
-
-  # normalize rd_insol to a list
-  if isinstance(opts["rd_insol"], (list, tuple, np.ndarray)):
-    rd_insol_list = list(opts["rd_insol"])
-  else:
-    rd_insol_list = [float(opts["rd_insol"])]
-  opts["rd_insol_list"] = rd_insol_list
 
   # parsing json specification of init aerosol spectra (if provided)
   aerosol = json.loads(opts["aerosol"]) if isinstance(opts.get("aerosol"), str) else opts.get("aerosol")

@@ -16,18 +16,17 @@ from pathlib import Path
 from typing import List
 
 sstp_cond_max = 10
-z_max = 400
+z_max = 3000
 
 def run_scheme(w_max, outfile, *, sstp_cond=sstp_cond_max):
     args = dict(
         p_0=100000,
         RH_0=0.9,
-        T_0=270,
-        aerosol = z_max,
-        sd_conc=100,#pow(2,10),#1024,#256,                                 }}},
+        T_0=273,
+        aerosol = None,
+        sd_conc=100,
         dt=1,
         z_max=None,
-        #w=lambda t: w_max * np.pi / 2. * np.sin(np.pi*t*w_max/z_max), # z_half = z_max
         w = w_max,
         outfile=outfile,
         outfreq=10,
@@ -36,18 +35,14 @@ def run_scheme(w_max, outfile, *, sstp_cond=sstp_cond_max):
                 '"ice": {"rght": 1, "moms": [0,1,3], "drwt": "ice_a", "nbin": 1, "lnli": "lin", "left": 0.5e-6}}',
         sstp_cond=sstp_cond,
         adaptive_sstp_cond=False,
-        sstp_cond_adapt_drw2_eps=None,
-        sstp_cond_adapt_drw2_max=None,
-        sstp_cond_act=None,
         sstp_cond_mix   = True,
-        exact_sstp_cond = True,
+        exact_sstp_cond = False,
         aerosol_independent_of_rhod=True, 
         backend="OpenMP",
         ice_switch = True,
         ice_nucl = True,
         time_dep_ice_nucl = False,
         depo = True,
-        rd_insol = [0., 1e-6],
         wait = 0
     )
 
@@ -91,7 +86,7 @@ baseline = dict(
 )
 
 
-def make_figure(aerosol_name, aerosol, xmax):
+def make_figure(aerosol_name, aerosol):
     run_scheme.aerosol = aerosol
     w_max = 1.0
     eps = 1e-2
@@ -148,5 +143,6 @@ def make_figure(aerosol_name, aerosol, xmax):
     return fig
 
 #make_figure('pristine', '{"DYCOMS": {"kappa": 0.61, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}', 100)
-make_figure('polluted', '{"polluted": {"kappa": 0.61, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}', 300)
+make_figure('polluted', '{"polluted": {"kappa": 0.61, "rd_insol" : 0.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]},' \
+            '"INP": {"kappa": 0.61, "rd_insol" : 0.5e-6, "mean_r": [0.029e-6], "gstdev": [1.36], "n_tot": [160.0e6]}}')
 plt.show()
