@@ -16,14 +16,14 @@ from pathlib import Path
 from typing import List
 
 sstp_cond_max = 10
-z_max = 2000.0
+z_max = 400
 
-def run_scheme(w_max, adaptive, outfile, *, sstp_cond=sstp_cond_max):
+def run_scheme(w_max, outfile, *, sstp_cond=sstp_cond_max):
     args = dict(
         p_0=100000,
         RH_0=0.9,
-        T_0=260,
-        aerosol = None,
+        T_0=270,
+        aerosol = z_max,
         sd_conc=100,#pow(2,10),#1024,#256,                                 }}},
         dt=1,
         z_max=None,
@@ -32,33 +32,34 @@ def run_scheme(w_max, adaptive, outfile, *, sstp_cond=sstp_cond_max):
         outfile=outfile,
         outfreq=10,
         scheme="lgrngn",
-        out_bin='{"liq": {"rght": 1, "moms": [0,1,3], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-10},' \
-                '"ice": {"rght": 1, "moms": [0,1,3], "drwt": "ice_a", "nbin": 1, "lnli": "lin", "left": 0.5e-10}}',
+        out_bin='{"liq": {"rght": 1, "moms": [0,1,3], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-6},' \
+                '"ice": {"rght": 1, "moms": [0,1,3], "drwt": "ice_a", "nbin": 1, "lnli": "lin", "left": 0.5e-6}}',
         sstp_cond=sstp_cond,
-        adaptive_sstp_cond=adaptive,
+        adaptive_sstp_cond=False,
         sstp_cond_adapt_drw2_eps=None,
         sstp_cond_adapt_drw2_max=None,
         sstp_cond_act=None,
-        sstp_cond_mix   = False,
+        sstp_cond_mix   = True,
         exact_sstp_cond = True,
         aerosol_independent_of_rhod=True, 
         backend="OpenMP",
         ice_switch = True,
         ice_nucl = True,
-        time_dep_ice_nucl = True,
+        time_dep_ice_nucl = False,
+        depo = True,
         rd_insol = [0., 1e-6],
-        wait = 500
+        wait = 0
     )
 
     if hasattr(run_scheme, "aerosol"):
         args["aerosol"] = run_scheme.aerosol
-    if adaptive:
-        if hasattr(run_scheme, "sstp_cond_adapt_drw2_eps"):
-            args["sstp_cond_adapt_drw2_eps"] = float(run_scheme.sstp_cond_adapt_drw2_eps)
-        if hasattr(run_scheme, "sstp_cond_adapt_drw2_max"):
-            args["sstp_cond_adapt_drw2_max"] = float(run_scheme.sstp_cond_adapt_drw2_max)
-        if hasattr(run_scheme, "sstp_cond_act"):
-            args["sstp_cond_act"] = int(run_scheme.sstp_cond_act)        
+    if hasattr(run_scheme, "sstp_cond_adapt_drw2_eps"):
+        args["sstp_cond_adapt_drw2_eps"] = float(run_scheme.sstp_cond_adapt_drw2_eps)
+    if hasattr(run_scheme, "sstp_cond_adapt_drw2_max"):
+        args["sstp_cond_adapt_drw2_max"] = float(run_scheme.sstp_cond_adapt_drw2_max)
+    if hasattr(run_scheme, "sstp_cond_act"):
+        args["sstp_cond_act"] = int(run_scheme.sstp_cond_act)      
+
 
     #args["t"] = 2. * z_max / w_max
     args["t"] = z_max / w_max
@@ -77,7 +78,9 @@ def run_scheme(w_max, adaptive, outfile, *, sstp_cond=sstp_cond_max):
         liq_mix_ratio = np.array(f.variables['liq_m3'][:]) *4/3 * np.pi * 997 #multiply by density of water
         liq_conc = np.array(f.variables['liq_m0'][:])  # 1/kg
         ice_conc = np.array(f.variables['ice_m0'][:])  # 1/kg
-    return RH, T, z, sstp_cond_mean, ice_mix_ratio, liq_mix_ratio, liq_conc, ice_conc
+        liq_r = np.where(liq_conc > 0, np.array(f.variables['liq_m1'][:]) / np.array(f.variables['liq_m0'][:]), 0)
+        ice_r = np.where(ice_conc > 0, np.array(f.variables['ice_m1'][:]) / np.array(f.variables['ice_m0'][:]), 0)
+    return RH, T, z, sstp_cond_mean, ice_mix_ratio, liq_mix_ratio, liq_conc, ice_conc, liq_r, ice_r
 
 
 # baseline - basically no adaptation, very relaxed conditions
@@ -92,7 +95,7 @@ def make_figure(aerosol_name, aerosol, xmax):
     run_scheme.aerosol = aerosol
     w_max = 1.0
     eps = 1e-2
-    fig, ax = plt.subplots(1, 3, figsize=(15.0, 15.0), sharey=True, squeeze=False)
+    fig, ax = plt.subplots(1, 5, figsize=(15.0, 15.0), sharey=True, squeeze=False)
 
     generated_nc_files: List[str] = []
 
@@ -105,7 +108,7 @@ def make_figure(aerosol_name, aerosol, xmax):
     run_scheme.sstp_cond_act = baseline["act"]
 
     outfile = f"test_adaptive_sstp_cond_{aerosol_name}_w{w_max:g}_eps{eps:.0e}_adapt1.nc"
-    RH, T, z, sstp_cond_mean, ice_mix_ratio, liq_mix_ratio, liq_conc, ice_conc = run_scheme(w_max, True, outfile)
+    RH, T, z, sstp_cond_mean, ice_mix_ratio, liq_mix_ratio, liq_conc, ice_conc, liq_r, ice_r = run_scheme(w_max, outfile)
     generated_nc_files.append(outfile)
 
 
@@ -116,13 +119,24 @@ def make_figure(aerosol_name, aerosol, xmax):
     ax[0,0].set_ylabel(f"w_max={w_max:g}\nHeight [m]")
     ax[0,0].set_xlabel('LWC')
 
-    ax[0,1].plot(liq_conc / 1e6, z, label="liquid")
     ax[0,1].plot(ice_conc / 1e6, z, label="ice")
+    ax[0,1].plot(liq_conc / 1e6, z, label="liquid")
     ax[0,1].legend()
     ax[0,1].set_xlabel("number conc. [1/mg]")
 
-    ax[0,2].plot(T, z)
-    ax[0,2].set_xlabel("Temperature [K]")
+    ax[0,2].plot(ice_r * 1e6, z, label="ice")
+    ax[0,2].plot(liq_r * 1e6, z, label="liquid")
+    ax[0,2].legend()
+    ax[0,2].set_xlabel("average radius [um]")
+
+    ax[0,3].plot(T, z)
+    ax[0,3].set_xlabel("Temperature [K]")
+
+    from functions import rh_to_rh_i
+    ax[0,4].plot([rh_to_rh_i(RH_val, T_val) for (RH_val, T_val) in zip(RH, T) ], z, label='ice')
+    ax[0,4].plot(RH, z, label='liq')
+    ax[0,4].set_xlabel("RH")
+    ax[0,4].legend()
 
 
     fig.suptitle("Adaptive substepping, " + aerosol_name)

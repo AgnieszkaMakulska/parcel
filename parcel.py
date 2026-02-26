@@ -33,6 +33,7 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
   ice_switch = False,
   ice_nucl = False,
   time_dep_ice_nucl = False,
+  depo = False,
   sd_conc = 64,
   aerosol = '{"ammonium_sulfate": {"kappa": 0.61, "mean_r": [0.02e-6], "gstdev": [1.4], "n_tot": [60.0e6]}}',
   dry_sizes = None,
@@ -75,6 +76,7 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
     ice_switch (Optional[bool]):  enable ice microphysics
     ice_nucl (Optional[bool]):    enable ice nucleation in lagrangian scheme
     time_dep_ice_nucl (Optional[bool]): enable time-dependent ice nucleation in lagrangian scheme
+    depo (Optional[bool]): enable ice depositional growth in lagrangian scheme
     outfile (Optional[string]):   output netCDF file name
     outfreq (Optional[int]):      output interval (in number of time steps)
     pprof   (Optional[string]):   method to calculate pressure profile used to calculate
@@ -234,6 +236,7 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
 
   if scheme == "lgrngn" and ice_switch:
     state["ice_mix_ratio"] = np.array([0.0])
+    state["ice_conc"] = np.array([0.0])
 
   if scheme == "blk_1m":
     state["rc"] = np.array([0.0])  # initial cloud water
@@ -355,14 +358,14 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
         # TODO: only if user wants to stop @ RH_max
         #if (state["RH"] < info["RH_max"]): break
 
-        # # output
-        # if (it % outfreq == 0):
-        #   # if nt is not None and nt > 0:
-        #   #   print(str(round(it / (nt * 1.) * 100, 2)) + " %")
-        #   if opts["t"] is not None:
-        #     print(str(round(state["t"] / (opts["t"] * 1.) * 100, 2)) + " %")
-        #   if opts["z_max"] is not None:
-        #     print(str(round(state["z"], 1)) + " / " + str(opts["z_max"]) + " m")
+        # output
+        if (it % outfreq == 0):
+          # if nt is not None and nt > 0:
+          #   print(str(round(it / (nt * 1.) * 100, 2)) + " %")
+          if opts["t"] is not None:
+            print(str(round(state["t"] / (opts["t"] * 1.) * 100, 2)) + " %")
+          if opts["z_max"] is not None:
+            print(str(round(state["z"], 1)) + " / " + str(opts["z_max"]) + " m")
           
           rec = it/outfreq
           if scheme == "lgrngn":
