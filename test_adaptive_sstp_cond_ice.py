@@ -1,5 +1,5 @@
 """
-Run adaptive substepping with ice
+Run adaptive substepping for the WBF process
 """
 
 import sys, os
@@ -10,15 +10,11 @@ import numpy as np
 from parcel import parcel
 from scipy.io import netcdf
 import matplotlib.pyplot as plt
-from matplotlib.collections import LineCollection
-import matplotlib.colors as mcolors
-from pathlib import Path
-from typing import List
+from functions import rh_to_rh_i
 
 sstp_cond_max = 10
-z_max = 3000
 
-def run_scheme(w_max, outfile, *, sstp_cond=sstp_cond_max):
+def run_scheme(outfile, *, sstp_cond=sstp_cond_max):
     args = dict(
         p_0=100000,
         RH_0=0.9,
@@ -26,17 +22,17 @@ def run_scheme(w_max, outfile, *, sstp_cond=sstp_cond_max):
         aerosol = None,
         sd_conc=100,
         dt=1,
-        z_max=None,
-        w = w_max,
+        z_max=1000,
+        w = 1.,
         outfile=outfile,
         outfreq=10,
         scheme="lgrngn",
-        out_bin='{"liq": {"rght": 1, "moms": [0,1,3], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-6},' \
-                '"ice": {"rght": 1, "moms": [0,1,3], "drwt": "ice_a", "nbin": 1, "lnli": "lin", "left": 0.5e-6}}',
+        out_bin='{"liq": {"rght": 1, "moms": [0,1,3], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-10},' \
+                '"ice": {"rght": 1, "moms": [0,1,3], "drwt": "ice_a", "nbin": 1, "lnli": "lin", "left": 0.5e-10}}',
         sstp_cond=sstp_cond,
         adaptive_sstp_cond=False,
         sstp_cond_mix   = True,
-        exact_sstp_cond = False,
+        exact_sstp_cond = True,
         aerosol_independent_of_rhod=True, 
         backend="OpenMP",
         ice_switch = True,
@@ -55,11 +51,6 @@ def run_scheme(w_max, outfile, *, sstp_cond=sstp_cond_max):
     if hasattr(run_scheme, "sstp_cond_act"):
         args["sstp_cond_act"] = int(run_scheme.sstp_cond_act)      
 
-
-    #args["t"] = 2. * z_max / w_max
-    args["t"] = z_max / w_max
-    args["outfreq"] = 1
-    print("t: ", args["t"])
     parcel(**args)
 
     with netcdf.netcdf_file(outfile, 'r') as f:
@@ -78,71 +69,46 @@ def run_scheme(w_max, outfile, *, sstp_cond=sstp_cond_max):
     return RH, T, z, sstp_cond_mean, ice_mix_ratio, liq_mix_ratio, liq_conc, ice_conc, liq_r, ice_r
 
 
-# baseline - basically no adaptation, very relaxed conditions
-baseline = dict(
-    eps=1e6, #1e-1,
-    max=1e6, #100,
-    act=1,  # 1 means disabled
-)
 
-
-def make_figure(aerosol_name, aerosol):
+def make_figure(aerosol):
     run_scheme.aerosol = aerosol
-    w_max = 1.0
     eps = 1e-2
     fig, ax = plt.subplots(1, 5, figsize=(15.0, 15.0), sharey=True, squeeze=False)
 
-    generated_nc_files: List[str] = []
-
-    cmap_dt = "gnuplot"
-    norm_dt = mcolors.Normalize(vmin=1, vmax=sstp_cond_max)
-
 
     run_scheme.sstp_cond_adapt_drw2_eps = eps
-    run_scheme.sstp_cond_adapt_drw2_max = baseline["max"]
-    run_scheme.sstp_cond_act = baseline["act"]
+    run_scheme.sstp_cond_adapt_drw2_max = 1e6
 
-    outfile = f"test_adaptive_sstp_cond_{aerosol_name}_w{w_max:g}_eps{eps:.0e}_adapt1.nc"
-    RH, T, z, sstp_cond_mean, ice_mix_ratio, liq_mix_ratio, liq_conc, ice_conc, liq_r, ice_r = run_scheme(w_max, outfile)
-    generated_nc_files.append(outfile)
+    outfile = f"test_adaptive_sstp_cond_eps{eps:.0e}_adapt1.nc"
+    RH, T, z, sstp_cond_mean, ice_mix_ratio, liq_mix_ratio, liq_conc, ice_conc, liq_r, ice_r = run_scheme(outfile)
 
-
-    ax[0,0].plot(ice_mix_ratio, z, label="ice")
-    ax[0,0].plot(liq_mix_ratio, z, label="liq")
+    ax[0,0].plot(ice_mix_ratio * 1e3, z, label="ice", color='skyblue')
+    ax[0,0].plot(liq_mix_ratio * 1e3, z, label="liquid", color='coral')
+    ax[0,0].set_xlabel('LWC [g/m^3]')
+    ax[0,0].set_ylabel('z [m]')
     ax[0,0].legend()
-    ax[0,0].set_title(f"eps={eps:.0e}")
-    ax[0,0].set_ylabel(f"w_max={w_max:g}\nHeight [m]")
-    ax[0,0].set_xlabel('LWC')
 
-    ax[0,1].plot(ice_conc / 1e6, z, label="ice")
-    ax[0,1].plot(liq_conc / 1e6, z, label="liquid")
-    ax[0,1].legend()
-    ax[0,1].set_xlabel("number conc. [1/mg]")
+    ax[0,1].plot(ice_conc / 1e6, z, label="ice", color='skyblue')
+    ax[0,1].plot(liq_conc / 1e6, z, label="liquid", color='coral')
+    ax[0,1].set_xlabel('concentration [1/mg]')
 
-    ax[0,2].plot(ice_r * 1e6, z, label="ice")
-    ax[0,2].plot(liq_r * 1e6, z, label="liquid")
-    ax[0,2].legend()
+    ax[0,2].plot(ice_r * 1e6, z, label="ice", color='skyblue')
+    ax[0,2].plot(liq_r * 1e6, z, label="liquid", color='coral')
     ax[0,2].set_xlabel("average radius [um]")
 
-    ax[0,3].plot(T, z)
-    ax[0,3].set_xlabel("Temperature [K]")
+    ax[0,3].plot(T, z, color='purple')
+    ax[0,3].set_xlabel("temperature [K]")
 
-    from functions import rh_to_rh_i
-    ax[0,4].plot([rh_to_rh_i(RH_val, T_val) for (RH_val, T_val) in zip(RH, T) ], z, label='ice')
-    ax[0,4].plot(RH, z, label='liq')
+    ax[0,4].plot([rh_to_rh_i(RH_val, T_val) for (RH_val, T_val) in zip(RH, T) ], z, label='ice', color='skyblue')
+    ax[0,4].plot(RH, z, label='liq', color='coral')
     ax[0,4].set_xlabel("RH")
-    ax[0,4].legend()
 
-
-    fig.suptitle("Adaptive substepping, " + aerosol_name)
     fig.tight_layout(rect=(0, 0.10, 1, 0.97))
-
-    out_png = "test_adaptive_sstp_cond_"+aerosol_name+".png"
+    out_png = "test_adaptive_sstp_WBF.png"
     plt.savefig(out_png, dpi=200)
 
     return fig
 
-#make_figure('pristine', '{"DYCOMS": {"kappa": 0.61, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}', 100)
-make_figure('polluted', '{"polluted": {"kappa": 0.61, "rd_insol" : 0.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]},' \
-            '"INP": {"kappa": 0.61, "rd_insol" : 0.5e-6, "mean_r": [0.029e-6], "gstdev": [1.36], "n_tot": [160.0e6]}}')
+make_figure('{"polluted": {"kappa": 0.61, "rd_insol" : 0.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]},' \
+            '"INP": {"kappa": 0.61, "rd_insol" : 0.5e-6, "mean_r": [0.029e-6], "gstdev": [1.36], "n_tot": [10.0e6]}}')
 plt.show()

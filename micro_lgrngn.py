@@ -44,7 +44,6 @@ def _micro_init(aerosol, opts, state):
       for i in range(len(dct["mean_r"])):
         lognormals.append(lognormal(dct["mean_r"][i], dct["gstdev"][i], dct["n_tot"][i]))
       dry_distros[(float(dct["kappa"]), float(dct["rd_insol"]))] = sum_of_lognormals(lognormals)
-      print(float(dct["rd_insol"]))
     opts_init.dry_distros = dry_distros
 
   # dry_sizes from discrete bins (opts['dry_sizes'])
@@ -170,8 +169,6 @@ def _micro_step(micro, state, info, opts):
     micro.diag_ice()
     micro.diag_ice_mix_ratio()
     state["ice_mix_ratio"] = np.frombuffer(micro.outbuf())[0]
-    micro.diag_ice_a_mom(0)
-    state["ice_conc"] = np.frombuffer(micro.outbuf())[0]
 
   if micro.opts_init.adaptive_sstp_cond:
     micro.diag_all()
