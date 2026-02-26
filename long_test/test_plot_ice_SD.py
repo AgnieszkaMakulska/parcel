@@ -42,6 +42,7 @@ def test_plot_ice_SD():
             RH_0 = 1.,
             scheme = "lgrngn",
             ice_switch=True,
+            depo = True,
             ice_nucl=True,
             time_dep_ice_nucl=True,
             aerosol = f'{{"ammonium_sulfate": {{"kappa": 0.61, "rd_insol": {rd_insol}, "mean_r": [0.02e-6], "gstdev": [1.4], "n_tot": [60.0e6]}}}}', 
