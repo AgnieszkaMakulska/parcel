@@ -12,9 +12,9 @@ from scipy.io import netcdf
 import matplotlib.pyplot as plt
 from functions import rh_to_rh_i
 
-sstp = 10
+sstp = 20
 
-def run_scheme(outfile, mixing, *, sstp_cond=sstp):
+def run_scheme(outfile, mixing, sstp):
     args = dict(
         p_0=100000,
         RH_0=0.9,
@@ -29,8 +29,8 @@ def run_scheme(outfile, mixing, *, sstp_cond=sstp):
         scheme="lgrngn",
         out_bin='{"liq": {"rght": 1, "moms": [0,1,3], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-10},' \
                 '"ice": {"rght": 1, "moms": [0,1,3], "drwt": "ice_a", "nbin": 1, "lnli": "lin", "left": 0.5e-10}}',
-        sstp_cond=sstp_cond,
-        adaptive_sstp_cond=False,
+        sstp_cond = sstp,
+        adaptive_sstp_cond = False,
         sstp_cond_mix   = mixing,
         exact_sstp_cond = True,
         aerosol_independent_of_rhod=True, 
@@ -60,26 +60,26 @@ def run_scheme(outfile, mixing, *, sstp_cond=sstp):
 
 
 
-def make_figure(aerosol):
+def make_figure(aerosol, sstp):
     run_scheme.aerosol = aerosol
     fig, ax = plt.subplots(1, 5, figsize=(15.0, 8.0), sharey=True, squeeze=False)
 
     for mixing in [True, False]:
 
         outfile = f"test_sstp_WBF_mix_{mixing}.nc"
-        RH, T, z, ice_mix_ratio, liq_mix_ratio, liq_conc, ice_conc, liq_r, ice_r = run_scheme(outfile, mixing)
+        RH, T, z, ice_mix_ratio, liq_mix_ratio, liq_conc, ice_conc, liq_r, ice_r = run_scheme(outfile, mixing, sstp)
 
         (ice_c, liq_c, ice_l, liq_l) = ("skyblue", "coral", "ice mixing", "liquid mixing") if mixing else ("steelblue", "sienna", "ice non mixing", "liquid non mixing")
 
-        ax[0,0].plot(ice_mix_ratio * 1e3, z, label="ice", color=ice_c)
-        ax[0,0].plot(liq_mix_ratio * 1e3, z, label="liquid", color=liq_c)
-        ax[0,1].plot(ice_conc / 1e6, z, label="ice", color=ice_c)
-        ax[0,1].plot(liq_conc / 1e6, z, label="liquid", color=liq_c)
-        ax[0,2].plot(ice_r * 1e6, z, label="ice", color=ice_c)
-        ax[0,2].plot(liq_r * 1e6, z, label="liquid", color=liq_c)
+        ax[0,0].plot(ice_mix_ratio * 1e3, z, label=ice_l, color=ice_c)
+        ax[0,0].plot(liq_mix_ratio * 1e3, z, label=liq_l, color=liq_c)
+        ax[0,1].plot(ice_conc / 1e6, z, label=ice_l, color=ice_c)
+        ax[0,1].plot(liq_conc / 1e6, z, label=liq_l, color=liq_c)
+        ax[0,2].plot(ice_r * 1e6, z, label=ice_l, color=ice_c)
+        ax[0,2].plot(liq_r * 1e6, z, label=liq_l, color=liq_c)
         ax[0,3].plot(T, z, color=ice_c)
         ax[0,4].plot([rh_to_rh_i(RH_val, T_val) for (RH_val, T_val) in zip(RH, T) ], z, label='ice', color=ice_c)
-        ax[0,4].plot(RH, z, label='liq', color=liq_c)
+        ax[0,4].plot(RH, z, label=liq_l, color=liq_c)
 
     ax[0,0].set_xlabel('LWC [g/m^3]')
     ax[0,0].set_ylabel('z [m]')
@@ -90,12 +90,12 @@ def make_figure(aerosol):
     ax[0,4].set_xlabel("RH")
 
     fig.tight_layout(rect=(0, 0.10, 1, 0.97))
-    out_png = "test_sstp_WBF_mixing.png"
-    plt.suptitle('WBF process with {sstp_cond} substeps')
+    out_png = "test_WBF_mixing_"+str(sstp)+"sstp.png"
+    plt.suptitle('WBF process with ' + str(sstp) + ' substeps')
     plt.savefig(out_png, dpi=200)
 
     return fig
 
 make_figure('{"polluted": {"kappa": 0.61, "rd_insol" : 0.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]},' \
-            '"INP": {"kappa": 0.61, "rd_insol" : 0.5e-6, "mean_r": [0.029e-6], "gstdev": [1.36], "n_tot": [10.0e6]}}')
+            '"INP": {"kappa": 0.61, "rd_insol" : 0.5e-6, "mean_r": [0.029e-6], "gstdev": [1.36], "n_tot": [5.0e6]}}', sstp)
 plt.show()
