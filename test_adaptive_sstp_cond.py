@@ -52,8 +52,7 @@ def run_scheme(w_max, adaptive, outfile, *, sstp_cond=sstp_cond_max):
         backend="OpenMP",
         ice_switch = True,
         ice_nucl = True,
-        time_dep_ice_nucl = True,
-        rd_insol = 0.1e-6
+        time_dep_ice_nucl = True
     )
 
     # NOTE: we allow passing these in through function attributes set outside.
@@ -211,5 +210,5 @@ def make_figure(aerosol_name, aerosol, xmax):
     return fig
 
 #make_figure('pristine', '{"DYCOMS": {"kappa": 0.61, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}', 200)
-make_figure('polluted', '{"polluted": {"kappa": 0.61, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}', 600)
+make_figure('polluted', '{"polluted": {"kappa": 0.61, "rd_insol": 0.1e-6, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}', 600)
 # plt.show()

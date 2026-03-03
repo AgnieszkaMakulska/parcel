@@ -112,6 +112,9 @@ def _output_init(micro, opts, spectra):
   fout.createVariable("act_m0", 'd', ('t',))
   fout.variables["act_m0"].unit = "1/kg"
 
+  fout.createVariable("act_m1", 'd', ('t',))
+  fout.variables["act_m1"].unit = "m/kg"
+
   fout.createVariable("sd_conc", 'd', ('t',))
   fout.variables["sd_conc"].unit = "1"
 
