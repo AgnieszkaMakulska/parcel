@@ -109,6 +109,10 @@ def _output_init(micro, opts, spectra):
     fout.createVariable("sstp_cond_mean", 'd', ('t',))
     fout.variables["sstp_cond_mean"].unit = "1"
 
+    if micro.opts_init.ice_switch:
+      fout.createVariable("sstp_dep_mean", 'd', ('t',))
+      fout.variables["sstp_dep_mean"].unit = "1"
+
   fout.createVariable("act_m0", 'd', ('t',))
   fout.variables["act_m0"].unit = "1/kg"
 
