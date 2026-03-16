@@ -17,8 +17,8 @@ import matplotlib.colors as mcolors
 from matplotlib.collections import LineCollection
 
 sstp_max = 10
-w_list = [2.5]
-z_max = 1500.
+w_list = [1., 2.5, 5.]
+z_max_list = [1250., 2000, 3000.]
 epsilon = 1e-2
 
 polluted = '{"polluted": {"kappa": 0.61, "rd_insol" : 0.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]},' \
@@ -27,22 +27,23 @@ polluted = '{"polluted": {"kappa": 0.61, "rd_insol" : 0.0, "mean_r": [0.029e-6, 
 pristine = '{"pristine": {"kappa": 0.61, "rd_insol": 0.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]},' \
                 '"INP": {"kappa": 0.61, "rd_insol" : 0.5e-6, "mean_r": [0.029e-6], "gstdev": [1.36], "n_tot": [10.0e6]}}' # low concentration of INPs
 
-def run_scheme(outfile, aerosol, w_max, adaptive):
+def run_scheme(outfile, aerosol, w_max, z_max, adaptive):
     args = dict(
         p_0=100000,
         RH_0=0.9,
         T_0=277,
         aerosol = aerosol,
-        sd_conc=100,
+        sd_conc=500,
         dt=1,
         z_max=None,
+        #w=lambda t: w_max * np.pi / 2. * np.sin(np.pi*t*w_max/z_max),
         w = lambda t: w_max if t <= z_max/w_max else -w_max,
         t = 2 * z_max / w_max,
         outfile=outfile,
         outfreq=10,
         scheme="lgrngn",
-        out_bin='{"liq": {"rght": 1, "moms": [0,1,3], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-20},' \
-                '"ice": {"rght": 1, "moms": [0,1,3], "drwt": "ice_a", "nbin": 1, "lnli": "lin", "left": 0.5e-20}}',
+        out_bin='{"liq": {"rght": 1, "moms": [0,1,2,3], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-20},' \
+                '"ice": {"rght": 1, "moms": [0,1,2,3], "drwt": "ice_a", "nbin": 1, "lnli": "lin", "left": 0.5e-20}}',
         sstp_cond = sstp_max,
         adaptive_sstp_cond = adaptive,
         sstp_cond_mix   = False,
@@ -63,6 +64,13 @@ def run_scheme(outfile, aerosol, w_max, adaptive):
         RH = np.array(f.variables['RH'][:]).squeeze()
         T = np.array(f.variables['T'][:]).squeeze()
         rv = np.array(f.variables['r_v'][:]).squeeze()
+        liq_m0 = np.array(f.variables['liq_m0'][:]).squeeze()
+        liq_m1 = np.array(f.variables['liq_m1'][:]).squeeze()
+        liq_m2 = np.array(f.variables['liq_m2'][:]).squeeze()
+        ice_m0 = np.array(f.variables['ice_m0'][:]).squeeze()
+        ice_m1 = np.array(f.variables['ice_m1'][:]).squeeze()
+        ice_m2 = np.array(f.variables['ice_m2'][:]).squeeze()
+
         ice_mix_ratio = np.array(f.variables['ice_mix_ratio'][:]).squeeze()
         liq_mix_ratio = np.array(f.variables['liq_m3'][:]).squeeze() * 4/3 * np.pi * common.rho_w  #multiply by density of water
         ice_conc = np.array(f.variables['ice_m0'][:]).squeeze()  # 1/kg
@@ -71,23 +79,30 @@ def run_scheme(outfile, aerosol, w_max, adaptive):
         act_r = np.where(act_conc > 0, np.array(f.variables['act_m1'][:]).squeeze() / np.array(f.variables['act_m0'][:]).squeeze(), 0)
         sstp_cond_mean = np.array(f.variables['sstp_cond_mean'][:]) if 'sstp_cond_mean' in f.variables else None
 
+        variance_liq = np.where(liq_m0 > 0, 
+                           liq_m2 / liq_m0 - (liq_m1 / liq_m0)**2, 
+                           0)
+        variance_ice = np.where(ice_m0 > 0, 
+                           ice_m2 / ice_m0 - (ice_m1 / ice_m0)**2, 
+                           0)
+
         if sstp_cond_mean is not None:
             sstp_cond_mean[0] = sstp_cond_mean[1] # at t=0 sstp_cond_mean=0, because its set only during the firs step (?)
         sstp_dep_mean = np.array(f.variables['sstp_dep_mean'][:]) if 'sstp_dep_mean' in f.variables else None
         if sstp_dep_mean is not None:
             sstp_dep_mean[0] = sstp_dep_mean[1] # at t=0 sstp_cond_mean=0, because its set only during the firs step (?)
-    return RH, T, rv, z, ice_mix_ratio, liq_mix_ratio, ice_conc, act_conc, ice_r, act_r, sstp_cond_mean, sstp_dep_mean
+    return RH, T, rv, z, ice_mix_ratio, liq_mix_ratio, ice_conc, act_conc, ice_r, act_r, sstp_cond_mean, sstp_dep_mean, variance_liq, variance_ice
 
 
 
-def make_figure(aerosol, w_max):
+def make_figure(aerosol, w_max, z_max):
 
     fig, ax = plt.subplots(1, 5, figsize=(15.0, 8.0), sharey=True, squeeze=False)
 
     for adaptive in [True, False]:
 
         outfile = f"test_WBF.nc"
-        RH, T, rv, z, ice_mix_ratio, liq_mix_ratio, ice_conc, act_conc, ice_r, act_r, sstp_cond_mean, sstp_dep_mean = run_scheme(outfile, aerosol, w_max, adaptive)           
+        RH, T, rv, z, ice_mix_ratio, liq_mix_ratio, ice_conc, act_conc, ice_r, act_r, sstp_cond_mean, sstp_dep_mean, variance_liq, variance_ice = run_scheme(outfile, aerosol, w_max, z_max, adaptive)           
 
 
         (ice_c, liq_c, ice_l, liq_l) = ("skyblue", "coral", "ice adaptive", "liquid adaptive") if adaptive else ("steelblue", "sienna", "ice 10 sstp", "liquid 10 sstp")
@@ -101,7 +116,9 @@ def make_figure(aerosol, w_max):
         ax[0,2].plot(ice_r * 1e6, z, color=ice_c, linestyle=s)
         ax[0,2].plot(act_r * 1e6, z, color=liq_c, linestyle=s)
         #ax[0,3].plot((rv + liq_mix_ratio + ice_mix_ratio) * 1e3, z, color=c, linestyle=s)
-        ax[0,3].plot(T, z, color=c, linestyle=s)
+        #ax[0,3].plot(T, z, color=c, linestyle=s)
+        ax[0,3].plot(np.sqrt(variance_ice)*1e6, z, color=ice_c, label=ice_l, linestyle=s)
+        ax[0,3].plot(np.sqrt(variance_liq)*1e6, z, color=liq_c, label=liq_l, linestyle=s)
         if adaptive:
             ax[0,4].plot(sstp_dep_mean, z, color=ice_c, linestyle=s)
             ax[0,4].plot(sstp_cond_mean, z, color=liq_c, linestyle=s)
@@ -115,14 +132,15 @@ def make_figure(aerosol, w_max):
     ax[0,1].set_xlabel('concentration [1/mg]')
     ax[0,2].set_xlabel("average radius [um]")
     #ax[0,3].set_xlabel("total mix ratio [g/kg]")
-    ax[0,3].set_xlabel("T [K]")
+    #ax[0,3].set_xlabel("T [K]")
+    ax[0,3].set_xlabel('standard deviation [um]')
     ax[0,4].set_xlabel("sstp mean")
 
     ax[0,3].ticklabel_format(style='plain', useOffset=False)
     ax[0,3].xaxis.set_major_locator(MaxNLocator(4))
 
-    ax[0,4].set_xlim(0,10)
-    ax[0,1].set_xlim(-4, 120)
+    ax[0,4].set_xlim(0,10.1)
+    #ax[0,1].set_xlim(-4, 120)
 
     fig.tight_layout(rect=(0, 0.10, 1, 0.97))
     aerosol_str = "pristine" if aerosol==pristine else "polluted"
@@ -132,7 +150,8 @@ def make_figure(aerosol, w_max):
 
     return fig
 
-for w_max in w_list:
-    for aerosol in [pristine]:
-        make_figure(aerosol, w_max)
+for w_max,z_max in zip(w_list, z_max_list):
+    print(w_max, z_max)
+    for aerosol in [pristine, polluted]:
+        make_figure(aerosol, w_max, z_max)
 plt.show()
