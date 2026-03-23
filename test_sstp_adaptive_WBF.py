@@ -17,9 +17,8 @@ import matplotlib.colors as mcolors
 from matplotlib.collections import LineCollection
 
 sstp_max = 10
-w_list = [1., 2.5, 5.]
-z_max_list = [1250., 2000, 3000.]
-epsilon = 1e-2
+w_list = [2.5]#[1., 2.5, 5.]
+z_max_list = [2000]#[1250., 2000, 3000.]
 
 polluted = '{"polluted": {"kappa": 0.61, "rd_insol" : 0.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]},' \
                 '"INP": {"kappa": 0.61, "rd_insol" : 0.5e-6, "mean_r": [0.029e-6], "gstdev": [1.36], "n_tot": [10.0e6]}}' # low concentration of INPs
@@ -27,7 +26,7 @@ polluted = '{"polluted": {"kappa": 0.61, "rd_insol" : 0.0, "mean_r": [0.029e-6, 
 pristine = '{"pristine": {"kappa": 0.61, "rd_insol": 0.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]},' \
                 '"INP": {"kappa": 0.61, "rd_insol" : 0.5e-6, "mean_r": [0.029e-6], "gstdev": [1.36], "n_tot": [10.0e6]}}' # low concentration of INPs
 
-def run_scheme(outfile, aerosol, w_max, z_max, adaptive):
+def run_scheme(outfile, aerosol, w_max, z_max, adaptive, epsilon):
     args = dict(
         p_0=100000,
         RH_0=0.9,
@@ -55,6 +54,8 @@ def run_scheme(outfile, aerosol, w_max, z_max, adaptive):
         time_dep_ice_nucl = False,
         depo = True,
         sstp_cond_adapt_drw2_eps = epsilon
+        #sstp_cond_adapt_drw2_max=100,
+        #sstp_cond_act=1
     )
 
     parcel(**args)
@@ -97,61 +98,107 @@ def run_scheme(outfile, aerosol, w_max, z_max, adaptive):
 
 def make_figure(aerosol, w_max, z_max):
 
-    fig, ax = plt.subplots(1, 5, figsize=(15.0, 8.0), sharey=True, squeeze=False)
+    fig, ax = plt.subplots(2, 5, figsize=(12.0, 12.0), sharey=True, squeeze=True)
 
-    for adaptive in [True, False]:
+    #for adaptive, epsilon in [(True, 1e-1),(True, 1e-2), (True, 1e-3), (False, None)]:
+    for adaptive, epsilon in [(True, 1e-1)]:
 
         outfile = f"test_WBF.nc"
-        RH, T, rv, z, ice_mix_ratio, liq_mix_ratio, ice_conc, act_conc, ice_r, act_r, sstp_cond_mean, sstp_dep_mean, variance_liq, variance_ice = run_scheme(outfile, aerosol, w_max, z_max, adaptive)           
+        RH, T, rv, z, ice_mix_ratio, liq_mix_ratio, ice_conc, act_conc, ice_r, act_r, sstp_cond_mean, sstp_dep_mean, variance_liq, variance_ice = run_scheme(outfile, aerosol, w_max, z_max, adaptive, epsilon)           
 
+        if not adaptive:
+            c = 'lightgrey'
+            s = ':'
+            l = 'non-adaptive'
+        else:
+            s = '-'
+            l = '$\epsilon$ = '+str(epsilon)
+            if epsilon == 1e-3:
+                c = 'blue'
+            elif epsilon == 1e-2:
+                c = 'purple'
+            else:
+                c = 'violet'
 
-        (ice_c, liq_c, ice_l, liq_l) = ("skyblue", "coral", "ice adaptive", "liquid adaptive") if adaptive else ("steelblue", "sienna", "ice 10 sstp", "liquid 10 sstp")
-        s = '-' if adaptive else '--'
-        c = "violet" if adaptive else "purple"
-        
-        ax[0,0].plot(ice_mix_ratio * 1e3, z, color=ice_c, label=ice_l, linestyle=s)
-        ax[0,0].plot(liq_mix_ratio * 1e3, z, color=liq_c, label=liq_l, linestyle=s)
-        ax[0,1].plot(ice_conc / 1e6, z, color=ice_c, label=ice_l, linestyle=s)
-        ax[0,1].plot(act_conc / 1e6, z, color=liq_c, label=liq_l, linestyle=s)
-        ax[0,2].plot(ice_r * 1e6, z, color=ice_c, linestyle=s)
-        ax[0,2].plot(act_r * 1e6, z, color=liq_c, linestyle=s)
-        #ax[0,3].plot((rv + liq_mix_ratio + ice_mix_ratio) * 1e3, z, color=c, linestyle=s)
-        #ax[0,3].plot(T, z, color=c, linestyle=s)
-        ax[0,3].plot(np.sqrt(variance_ice)*1e6, z, color=ice_c, label=ice_l, linestyle=s)
-        ax[0,3].plot(np.sqrt(variance_liq)*1e6, z, color=liq_c, label=liq_l, linestyle=s)
+        m = len(RH)//2
+
+        ax[1,0].plot(ice_mix_ratio * 1e3, z, color=c, label=l, linestyle=s)
+        ax[0,0].plot(liq_mix_ratio * 1e3, z, color=c, label=l, linestyle=s)
+        ax[1,1].plot(ice_conc / 1e6, z, color=c, label=l, linestyle=s)
+        ax[0,1].plot(act_conc / 1e6, z, color=c, label=l, linestyle=s)
+        ax[1,2].plot(ice_r * 1e6, z, color=c, linestyle=s)
+        ax[0,2].plot(act_r * 1e6, z, color=c, linestyle=s)
+        ax[1,3].plot(np.sqrt(variance_ice)*1e6, z, color=c, label=l, linestyle=s)
+        ax[0,3].plot(np.sqrt(variance_liq)*1e6, z, color=c, label=l, linestyle=s)
         if adaptive:
-            ax[0,4].plot(sstp_dep_mean, z, color=ice_c, linestyle=s)
-            ax[0,4].plot(sstp_cond_mean, z, color=liq_c, linestyle=s)
+            ax[1,4].plot(sstp_dep_mean, z, color=c, linestyle=s)
+            ax[0,4].plot(sstp_cond_mean, z, color=c, linestyle=s)
+
+
+        x_start = (liq_mix_ratio[:m] * 1e3)[len(liq_mix_ratio[:m])//2]
+        y_start = z[:m][len(z[:m])//2]
+        x_end = (liq_mix_ratio[:m] * 1e3)[len(liq_mix_ratio[:m])//2+2]
+        y_end = z[:m][len(z[:m])//2+2]
+        ax[0,0].annotate(
+            '',
+            xy=(x_end, y_end),    # Grot strzałki
+            xytext=(x_start, y_start), # Początek strzałki
+            arrowprops=dict(
+                arrowstyle='->',
+                color=c,
+                linewidth=2
+            )
+        )
+
+
+        x_end = (liq_mix_ratio[m:] * 1e3)[len(liq_mix_ratio[m:])//2]
+        y_end = z[:m][len(z[m:])//2]
+        x_start= (liq_mix_ratio[m:] * 1e3)[len(liq_mix_ratio[m:])//2+2]
+        y_start = z[:m][len(z[m:])//2+2]
+        ax[0,0].annotate(
+            '',
+            xy=(x_end, y_end),    # Grot strzałki
+            xytext=(x_start, y_start), # Początek strzałki
+            arrowprops=dict(
+                arrowstyle='->',
+                color=c,
+                linewidth=2
+            )
+        )
 
     ax[0,3].legend()
     handles, labels = ax[0,0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="lower center", bbox_to_anchor=(0.15, 0.2))
 
     ax[0,0].set_ylabel('z [m]')
-    ax[0,0].set_xlabel('mix ratio [g/kg]')
-    ax[0,1].set_xlabel('concentration [1/mg]')
-    ax[0,2].set_xlabel("average radius [um]")
-    #ax[0,3].set_xlabel("total mix ratio [g/kg]")
-    #ax[0,3].set_xlabel("T [K]")
-    ax[0,3].set_xlabel('standard deviation [um]')
-    ax[0,4].set_xlabel("sstp mean")
+    ax[1,0].set_ylabel('z [m]')
+    ax[0,0].set_xlabel('liq mix ratio [g/kg]')
+    ax[1,0].set_xlabel('ice mix ratio [g/kg]')
+    ax[0,1].set_xlabel('liq concentration [1/mg]')
+    ax[1,1].set_xlabel('ice concentration [1/mg]')
+    ax[0,2].set_xlabel("liq average radius [um]")
+    ax[1,2].set_xlabel("ice average radius [um]")
+    ax[0,3].set_xlabel('liq standard deviation [um]')
+    ax[1,3].set_xlabel('ice standard deviation [um]')
+    ax[0,4].set_xlabel("liq sstp mean")
+    ax[1,4].set_xlabel("ice sstp mean")
 
-    ax[0,3].ticklabel_format(style='plain', useOffset=False)
-    ax[0,3].xaxis.set_major_locator(MaxNLocator(4))
+    # ax[0,3].ticklabel_format(style='plain', useOffset=False)
+    # ax[0,3].xaxis.set_major_locator(MaxNLocator(4))
 
     ax[0,4].set_xlim(0,10.1)
-    #ax[0,1].set_xlim(-4, 120)
+    ax[1,4].set_xlim(0,10.1)
 
     fig.tight_layout(rect=(0, 0.10, 1, 0.97))
     aerosol_str = "pristine" if aerosol==pristine else "polluted"
-    out_png = "test_adaptive_WBF_w_"+str(w_max)+"_"+aerosol_str+"_eps_"+str(epsilon)+".png"
-    plt.suptitle('WBF process with adaptive substeps, w = '+str(w_max)+' m/s, '+aerosol_str+ ', epsilon = '+str(epsilon))
+    out_png = "test_adaptive_WBF_w_"+str(w_max)+"_"+aerosol_str+".png"
+    plt.suptitle('w = '+str(w_max)+' m/s, '+aerosol_str)
     plt.savefig(out_png, dpi=200)
 
     return fig
 
 for w_max,z_max in zip(w_list, z_max_list):
     print(w_max, z_max)
-    for aerosol in [pristine, polluted]:
+    for aerosol in [pristine]: #, polluted]:
         make_figure(aerosol, w_max, z_max)
 plt.show()

@@ -84,8 +84,7 @@ def run_scheme(w_max, adaptive, outfile, *, sstp_cond=sstp_cond_max):
             sstp_cond_mean[0] = sstp_cond_mean[1] # at t=0 sstp_cond_mean=0, because its set only during the firs step (?)
         act_mom0 = np.array(f.variables['act_m0'][:]).squeeze()
         step_cond_walltime_ms = np.array(f.variables['step_cond_walltime_ms'][:]).squeeze() if 'step_cond_walltime_ms' in f.variables else None
-        ice_mix_ratio = np.array(f.variables['ice_mix_ratio'][:]) if 'ice_mix_ratio' in f.variables else None
-    return RH, z, sstp_cond_mean, act_mom0, step_cond_walltime_ms, ice_mix_ratio
+    return RH, z, sstp_cond_mean, act_mom0, step_cond_walltime_ms
 
 # --- batch scenarios ---
 
@@ -96,14 +95,14 @@ baseline = dict(
     act=1,  # 1 means disabled
 )
 
-vary_eps = [1e-2] #[1e-1, 1e-2, 1e-3]
+vary_eps = [1e-1, 1e-2, 1e-3]
 
 def make_figure(aerosol_name, aerosol, xmax):
     run_scheme.aerosol = aerosol
     # rows: w_max; cols: eps
     # w_max_list = [0.1, 1., 2.5, 5.0]
     w_max_list = [5.0]
-    fig, axes = plt.subplots(len(w_max_list), int(len(vary_eps) + 1), figsize=(15.0, 15.0), sharex=True, sharey=True, squeeze=False)
+    fig, axes = plt.subplots(len(w_max_list), len(vary_eps), figsize=(15.0, 15.0), sharex=True, sharey=True, squeeze=False)
 
     generated_nc_files: List[str] = []
 
@@ -114,7 +113,7 @@ def make_figure(aerosol_name, aerosol, xmax):
     for i, w_max in enumerate(w_max_list):
         # --- reference run (non-adaptive) once per w_max ---
         outfile_ref = f"test_adaptive_sstp_cond_{aerosol_name}_w{w_max:g}_ref_adapt0.nc"
-        RH_ref, z_ref, _, act_mom0_ref, step_cond_ref_ms, ice_mix_ratio_ref = run_scheme(w_max, False, outfile_ref)
+        RH_ref, z_ref, _, act_mom0_ref, step_cond_ref_ms = run_scheme(w_max, False, outfile_ref)
         generated_nc_files.append(outfile_ref)
         x_ref = act_mom0_ref / 1e6
         y_ref = z_ref
@@ -132,7 +131,7 @@ def make_figure(aerosol_name, aerosol, xmax):
             run_scheme.sstp_cond_act = baseline["act"]
 
             outfile = f"test_adaptive_sstp_cond_{aerosol_name}_w{w_max:g}_eps{eps:.0e}_adapt1.nc"
-            RH, z, sstp_cond_mean, act_mom0, step_cond_walltime_ms, ice_mix_ratio = run_scheme(w_max, True, outfile)
+            RH, z, sstp_cond_mean, act_mom0, step_cond_walltime_ms = run_scheme(w_max, True, outfile)
             generated_nc_files.append(outfile)
 
             x = act_mom0 / 1e6
@@ -164,9 +163,6 @@ def make_figure(aerosol_name, aerosol, xmax):
                 lc.set_linewidth(2.0)
                 lc.set_zorder=2
                 ax.add_collection(lc)
-
-            if ice_mix_ratio is not None:
-                axes[i, j+1].plot(ice_mix_ratio)
 
             if i == 0:
                 ax.set_title(f"eps={eps:.0e}")
@@ -209,6 +205,6 @@ def make_figure(aerosol_name, aerosol, xmax):
 
     return fig
 
-#make_figure('pristine', '{"DYCOMS": {"kappa": 0.61, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}', 200)
+make_figure('pristine', '{"DYCOMS": {"kappa": 0.61, "rd_insol": 0.1e-6, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}', 200)
 make_figure('polluted', '{"polluted": {"kappa": 0.61, "rd_insol": 0.1e-6, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}', 600)
 # plt.show()
