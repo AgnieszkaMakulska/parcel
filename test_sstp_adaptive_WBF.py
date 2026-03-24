@@ -62,9 +62,9 @@ def run_scheme(outfile, aerosol, w_max, z_max, adaptive, epsilon):
 
     with netcdf.netcdf_file(outfile, 'r') as f:
         z = np.array(f.variables['z'][:]).squeeze()
-        RH = np.array(f.variables['RH'][:]).squeeze()
-        T = np.array(f.variables['T'][:]).squeeze()
-        rv = np.array(f.variables['r_v'][:]).squeeze()
+        # RH = np.array(f.variables['RH'][:]).squeeze()
+        # T = np.array(f.variables['T'][:]).squeeze()
+        # rv = np.array(f.variables['r_v'][:]).squeeze()
         liq_m0 = np.array(f.variables['liq_m0'][:]).squeeze()
         liq_m1 = np.array(f.variables['liq_m1'][:]).squeeze()
         liq_m2 = np.array(f.variables['liq_m2'][:]).squeeze()
@@ -78,36 +78,31 @@ def run_scheme(outfile, aerosol, w_max, z_max, adaptive, epsilon):
         act_conc = np.array(f.variables['act_m0'][:]).squeeze()
         ice_r = np.where(ice_conc > 0, np.array(f.variables['ice_m1'][:]).squeeze() / np.array(f.variables['ice_m0'][:]).squeeze(), 0)
         act_r = np.where(act_conc > 0, np.array(f.variables['act_m1'][:]).squeeze() / np.array(f.variables['act_m0'][:]).squeeze(), 0)
-        sstp_cond_mean = np.array(f.variables['sstp_cond_mean'][:]) if 'sstp_cond_mean' in f.variables else None
+        sstp_cond_mean = np.array(f.variables['sstp_cond_mean'][:]) if 'sstp_cond_mean' in f.variables else np.zeros(z.shape)
+        sstp_dep_mean = np.array(f.variables['sstp_dep_mean'][:]) if 'sstp_dep_mean' in f.variables else np.zeros(z.shape)
 
-        variance_liq = np.where(liq_m0 > 0, 
+        variance_liq = np.sqrt(np.where(liq_m0 > 0, 
                            liq_m2 / liq_m0 - (liq_m1 / liq_m0)**2, 
-                           0)
-        variance_ice = np.where(ice_m0 > 0, 
+                           0))
+        variance_ice = np.sqrt(np.where(ice_m0 > 0, 
                            ice_m2 / ice_m0 - (ice_m1 / ice_m0)**2, 
-                           0)
+                           0))
 
-        if sstp_cond_mean is not None:
-            sstp_cond_mean[0] = sstp_cond_mean[1] # at t=0 sstp_cond_mean=0, because its set only during the firs step (?)
-        sstp_dep_mean = np.array(f.variables['sstp_dep_mean'][:]) if 'sstp_dep_mean' in f.variables else None
-        if sstp_dep_mean is not None:
-            sstp_dep_mean[0] = sstp_dep_mean[1] # at t=0 sstp_cond_mean=0, because its set only during the firs step (?)
-    return RH, T, rv, z, ice_mix_ratio, liq_mix_ratio, ice_conc, act_conc, ice_r, act_r, sstp_cond_mean, sstp_dep_mean, variance_liq, variance_ice
+    return z, ice_mix_ratio*1e3, liq_mix_ratio*1e3, ice_conc/1e6, act_conc/1e6, ice_r*1e6, act_r*1e6, sstp_cond_mean, sstp_dep_mean, variance_liq*1e6, variance_ice*1e6
 
 
 
 def make_figure(aerosol, w_max, z_max):
 
-    fig, ax = plt.subplots(2, 5, figsize=(12.0, 12.0), sharey=True, squeeze=True)
+    fig, ax = plt.subplots(2, 5, figsize=(12.0, 10.0), sharey=True, squeeze=True)
 
-    #for adaptive, epsilon in [(True, 1e-1),(True, 1e-2), (True, 1e-3), (False, None)]:
-    for adaptive, epsilon in [(True, 1e-1)]:
+    for adaptive, epsilon in [(True, 1e-1),(True, 1e-2), (True, 1e-3), (False, None)]:
 
         outfile = f"test_WBF.nc"
-        RH, T, rv, z, ice_mix_ratio, liq_mix_ratio, ice_conc, act_conc, ice_r, act_r, sstp_cond_mean, sstp_dep_mean, variance_liq, variance_ice = run_scheme(outfile, aerosol, w_max, z_max, adaptive, epsilon)           
+        z, ice_mix_ratio, liq_mix_ratio, ice_conc, act_conc, ice_r, act_r, sstp_cond_mean, sstp_dep_mean, variance_liq, variance_ice = run_scheme(outfile, aerosol, w_max, z_max, adaptive, epsilon)           
 
         if not adaptive:
-            c = 'lightgrey'
+            c = 'grey'
             s = ':'
             l = 'non-adaptive'
         else:
@@ -120,51 +115,50 @@ def make_figure(aerosol, w_max, z_max):
             else:
                 c = 'violet'
 
-        m = len(RH)//2
-
-        ax[1,0].plot(ice_mix_ratio * 1e3, z, color=c, label=l, linestyle=s)
-        ax[0,0].plot(liq_mix_ratio * 1e3, z, color=c, label=l, linestyle=s)
-        ax[1,1].plot(ice_conc / 1e6, z, color=c, label=l, linestyle=s)
-        ax[0,1].plot(act_conc / 1e6, z, color=c, label=l, linestyle=s)
-        ax[1,2].plot(ice_r * 1e6, z, color=c, linestyle=s)
-        ax[0,2].plot(act_r * 1e6, z, color=c, linestyle=s)
-        ax[1,3].plot(np.sqrt(variance_ice)*1e6, z, color=c, label=l, linestyle=s)
-        ax[0,3].plot(np.sqrt(variance_liq)*1e6, z, color=c, label=l, linestyle=s)
+        ax[1,0].plot(ice_mix_ratio, z, color=c, label=l, linestyle=s)
+        ax[0,0].plot(liq_mix_ratio, z, color=c, label=l, linestyle=s)
+        ax[1,1].plot(ice_conc, z, color=c, label=l, linestyle=s)
+        ax[0,1].plot(act_conc, z, color=c, label=l, linestyle=s)
+        ax[1,2].plot(ice_r, z, color=c, linestyle=s)
+        ax[0,2].plot(act_r, z, color=c, linestyle=s)
+        ax[1,3].plot(variance_ice, z, color=c, label=l, linestyle=s)
+        ax[0,3].plot(variance_liq, z, color=c, label=l, linestyle=s)
         if adaptive:
             ax[1,4].plot(sstp_dep_mean, z, color=c, linestyle=s)
             ax[0,4].plot(sstp_cond_mean, z, color=c, linestyle=s)
 
 
-        x_start = (liq_mix_ratio[:m] * 1e3)[len(liq_mix_ratio[:m])//2]
-        y_start = z[:m][len(z[:m])//2]
-        x_end = (liq_mix_ratio[:m] * 1e3)[len(liq_mix_ratio[:m])//2+2]
-        y_end = z[:m][len(z[:m])//2+2]
-        ax[0,0].annotate(
-            '',
-            xy=(x_end, y_end),    # Grot strzałki
-            xytext=(x_start, y_start), # Początek strzałki
-            arrowprops=dict(
-                arrowstyle='->',
-                color=c,
-                linewidth=2
-            )
-        )
+        m = len(liq_mix_ratio)//2
 
 
-        x_end = (liq_mix_ratio[m:] * 1e3)[len(liq_mix_ratio[m:])//2]
-        y_end = z[:m][len(z[m:])//2]
-        x_start= (liq_mix_ratio[m:] * 1e3)[len(liq_mix_ratio[m:])//2+2]
-        y_start = z[:m][len(z[m:])//2+2]
-        ax[0,0].annotate(
-            '',
-            xy=(x_end, y_end),    # Grot strzałki
-            xytext=(x_start, y_start), # Początek strzałki
-            arrowprops=dict(
-                arrowstyle='->',
-                color=c,
-                linewidth=2
+        for var, axis in [
+                          (liq_mix_ratio, ax[0,0]), (ice_mix_ratio, ax[1,0]),
+                          (act_conc, ax[0,1]), (ice_conc, ax[1,1]),
+                          (act_r, ax[0,2]), (ice_r, ax[1,2]),
+                          (variance_liq, ax[0,3]), (variance_ice, ax[1,3]),
+                          (sstp_cond_mean, ax[0,4]), (sstp_dep_mean, ax[1,4])
+                           ]:
+
+            axis.annotate(
+                '',
+                xy=(var[len(var)//4+2], z[len(z)//4+2]),    # Grot strzałki
+                xytext=(var[len(var)//4], z[len(z)//4]), # Początek strzałki
+                arrowprops=dict(
+                    arrowstyle='->',
+                    color=c,
+                    linewidth=2
+                )
             )
-        )
+            axis.annotate(
+                '',
+                xy=(var[3*len(var)//4+4], z[3*len(z)//4+4]),    # Grot strzałki
+                xytext=(var[3*len(var)//4+2], z[3*len(z)//4+2]), # Początek strzałki
+                arrowprops=dict(
+                    arrowstyle='->',
+                    color=c,
+                    linewidth=2
+                )
+            )
 
     ax[0,3].legend()
     handles, labels = ax[0,0].get_legend_handles_labels()
