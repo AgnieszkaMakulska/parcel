@@ -196,6 +196,11 @@ def _micro_step(micro, state, info, opts):
   mom1 = np.frombuffer(micro.outbuf())[0]
   state["act_m1"] = mom1
 
+  micro.diag_rw_ge_rc()
+  mom2 = micro.diag_wet_mom(2)
+  mom2 = np.frombuffer(micro.outbuf())[0]
+  state["act_m2"] = mom2
+
   micro.diag_all()
   micro.diag_sd_conc()
   state["sd_conc"] = np.frombuffer(micro.outbuf())[0]

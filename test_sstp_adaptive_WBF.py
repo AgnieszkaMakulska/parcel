@@ -62,18 +62,18 @@ def run_scheme(outfile, aerosol, w_max, z_max, adaptive, epsilon):
 
     with netcdf.netcdf_file(outfile, 'r') as f:
         z = np.array(f.variables['z'][:]).squeeze()
-        # RH = np.array(f.variables['RH'][:]).squeeze()
-        # T = np.array(f.variables['T'][:]).squeeze()
-        # rv = np.array(f.variables['r_v'][:]).squeeze()
-        liq_m0 = np.array(f.variables['liq_m0'][:]).squeeze()
-        liq_m1 = np.array(f.variables['liq_m1'][:]).squeeze()
-        liq_m2 = np.array(f.variables['liq_m2'][:]).squeeze()
+        # liq_m0 = np.array(f.variables['liq_m0'][:]).squeeze()
+        # liq_m1 = np.array(f.variables['liq_m1'][:]).squeeze()
+        # liq_m2 = np.array(f.variables['liq_m2'][:]).squeeze()
+        act_m0 = np.array(f.variables['act_m0'][:]).squeeze()
+        act_m1 = np.array(f.variables['act_m1'][:]).squeeze()
+        act_m2 = np.array(f.variables['act_m2'][:]).squeeze()
         ice_m0 = np.array(f.variables['ice_m0'][:]).squeeze()
         ice_m1 = np.array(f.variables['ice_m1'][:]).squeeze()
         ice_m2 = np.array(f.variables['ice_m2'][:]).squeeze()
 
         ice_mix_ratio = np.array(f.variables['ice_mix_ratio'][:]).squeeze()
-        liq_mix_ratio = np.array(f.variables['liq_m3'][:]).squeeze() * 4/3 * np.pi * common.rho_w  #multiply by density of water
+        liq_mix_ratio = np.array(f.variables['liq_m3'][:]).squeeze() * 4/3 * np.pi * common.rho_w
         ice_conc = np.array(f.variables['ice_m0'][:]).squeeze()  # 1/kg
         act_conc = np.array(f.variables['act_m0'][:]).squeeze()
         ice_r = np.where(ice_conc > 0, np.array(f.variables['ice_m1'][:]).squeeze() / np.array(f.variables['ice_m0'][:]).squeeze(), 0)
@@ -81,14 +81,14 @@ def run_scheme(outfile, aerosol, w_max, z_max, adaptive, epsilon):
         sstp_cond_mean = np.array(f.variables['sstp_cond_mean'][:]) if 'sstp_cond_mean' in f.variables else np.zeros(z.shape)
         sstp_dep_mean = np.array(f.variables['sstp_dep_mean'][:]) if 'sstp_dep_mean' in f.variables else np.zeros(z.shape)
 
-        variance_liq = np.sqrt(np.where(liq_m0 > 0, 
-                           liq_m2 / liq_m0 - (liq_m1 / liq_m0)**2, 
+        std_dev_liq = np.sqrt(np.where(act_m0 > 0, 
+                           act_m2 / act_m0 - (act_m1 / act_m0)**2, 
                            0))
-        variance_ice = np.sqrt(np.where(ice_m0 > 0, 
+        std_dev_ice = np.sqrt(np.where(ice_m0 > 0, 
                            ice_m2 / ice_m0 - (ice_m1 / ice_m0)**2, 
                            0))
 
-    return z, ice_mix_ratio*1e3, liq_mix_ratio*1e3, ice_conc/1e6, act_conc/1e6, ice_r*1e6, act_r*1e6, sstp_cond_mean, sstp_dep_mean, variance_liq*1e6, variance_ice*1e6
+    return z/1000, ice_mix_ratio*1e3, liq_mix_ratio*1e3, ice_conc/1e6, act_conc/1e6, ice_r*1e6, act_r*1e6, sstp_cond_mean, sstp_dep_mean, std_dev_liq*1e6, std_dev_ice*1e6
 
 
 
@@ -141,41 +141,41 @@ def make_figure(aerosol, w_max, z_max):
 
             axis.annotate(
                 '',
-                xy=(var[len(var)//4+2], z[len(z)//4+2]),    # Grot strzałki
+                xy=(var[len(var)//4+6], z[len(z)//4+6]),    # Grot strzałki
                 xytext=(var[len(var)//4], z[len(z)//4]), # Początek strzałki
                 arrowprops=dict(
                     arrowstyle='->',
                     color=c,
-                    linewidth=2
+                    linewidth=1
                 )
             )
             axis.annotate(
                 '',
-                xy=(var[3*len(var)//4+4], z[3*len(z)//4+4]),    # Grot strzałki
+                xy=(var[3*len(var)//4+8], z[3*len(z)//4+8]),    # Grot strzałki
                 xytext=(var[3*len(var)//4+2], z[3*len(z)//4+2]), # Początek strzałki
                 arrowprops=dict(
                     arrowstyle='->',
                     color=c,
-                    linewidth=2
+                    linewidth=1
                 )
             )
 
-    ax[0,3].legend()
-    handles, labels = ax[0,0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", bbox_to_anchor=(0.15, 0.2))
+    ax[0,0].legend()
+    #handles, labels = ax[0,0].get_legend_handles_labels()
+    #fig.legend(handles, labels, loc="lower center", bbox_to_anchor=(0.15, 0.2))
 
-    ax[0,0].set_ylabel('z [m]')
-    ax[1,0].set_ylabel('z [m]')
-    ax[0,0].set_xlabel('liq mix ratio [g/kg]')
+    ax[0,0].set_ylabel('z [km]')
+    ax[1,0].set_ylabel('z [km]')
+    ax[0,0].set_xlabel('liquid mix ratio [g/kg]')
     ax[1,0].set_xlabel('ice mix ratio [g/kg]')
-    ax[0,1].set_xlabel('liq concentration [1/mg]')
+    ax[0,1].set_xlabel('liquid concentration [1/mg]')
     ax[1,1].set_xlabel('ice concentration [1/mg]')
-    ax[0,2].set_xlabel("liq average radius [um]")
-    ax[1,2].set_xlabel("ice average radius [um]")
-    ax[0,3].set_xlabel('liq standard deviation [um]')
-    ax[1,3].set_xlabel('ice standard deviation [um]')
-    ax[0,4].set_xlabel("liq sstp mean")
-    ax[1,4].set_xlabel("ice sstp mean")
+    ax[0,2].set_xlabel("liquid average radius [$\mu$m]")
+    ax[1,2].set_xlabel("ice average radius [$\mu$m]")
+    ax[0,3].set_xlabel('liquid standard deviation [$\mu$m]')
+    ax[1,3].set_xlabel('ice standard deviation [$\mu$m]')
+    ax[0,4].set_xlabel("sstp mean condensation")
+    ax[1,4].set_xlabel("sstp mean deposition")
 
     # ax[0,3].ticklabel_format(style='plain', useOffset=False)
     # ax[0,3].xaxis.set_major_locator(MaxNLocator(4))
