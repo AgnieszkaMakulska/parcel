@@ -17,8 +17,8 @@ import matplotlib.colors as mcolors
 from matplotlib.collections import LineCollection
 
 sstp_max = 10
-w_list = [2.5]#[1., 2.5, 5.]
-z_max_list = [2000]#[1250., 2000, 3000.]
+w_list = [1., 2.5, 5.]
+z_max_list = [1250., 2000, 3000.]
 
 polluted = '{"polluted": {"kappa": 0.61, "rd_insol" : 0.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]},' \
                 '"INP": {"kappa": 0.61, "rd_insol" : 0.5e-6, "mean_r": [0.029e-6], "gstdev": [1.36], "n_tot": [10.0e6]}}' # low concentration of INPs
@@ -26,13 +26,13 @@ polluted = '{"polluted": {"kappa": 0.61, "rd_insol" : 0.0, "mean_r": [0.029e-6, 
 pristine = '{"pristine": {"kappa": 0.61, "rd_insol": 0.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]},' \
                 '"INP": {"kappa": 0.61, "rd_insol" : 0.5e-6, "mean_r": [0.029e-6], "gstdev": [1.36], "n_tot": [10.0e6]}}' # low concentration of INPs
 
-def run_scheme(outfile, aerosol, w_max, z_max, adaptive, epsilon):
+def run_scheme(outfile, aerosol, w_max, z_max, adaptive, epsilon, sstp_act):
     args = dict(
         p_0=100000,
         RH_0=0.9,
         T_0=277,
         aerosol = aerosol,
-        sd_conc=500,
+        sd_conc=100,
         dt=1,
         z_max=None,
         #w=lambda t: w_max * np.pi / 2. * np.sin(np.pi*t*w_max/z_max),
@@ -53,18 +53,15 @@ def run_scheme(outfile, aerosol, w_max, z_max, adaptive, epsilon):
         ice_nucl = True,
         time_dep_ice_nucl = False,
         depo = True,
-        sstp_cond_adapt_drw2_eps = epsilon
+        sstp_cond_adapt_drw2_eps = epsilon,
+        sstp_cond_act = sstp_act
         #sstp_cond_adapt_drw2_max=100,
-        #sstp_cond_act=1
     )
 
     parcel(**args)
 
     with netcdf.netcdf_file(outfile, 'r') as f:
         z = np.array(f.variables['z'][:]).squeeze()
-        # liq_m0 = np.array(f.variables['liq_m0'][:]).squeeze()
-        # liq_m1 = np.array(f.variables['liq_m1'][:]).squeeze()
-        # liq_m2 = np.array(f.variables['liq_m2'][:]).squeeze()
         act_m0 = np.array(f.variables['act_m0'][:]).squeeze()
         act_m1 = np.array(f.variables['act_m1'][:]).squeeze()
         act_m2 = np.array(f.variables['act_m2'][:]).squeeze()
@@ -96,15 +93,19 @@ def make_figure(aerosol, w_max, z_max):
 
     fig, ax = plt.subplots(2, 5, figsize=(12.0, 10.0), sharey=True, squeeze=True)
 
-    for adaptive, epsilon in [(True, 1e-1),(True, 1e-2), (True, 1e-3), (False, None)]:
+    for adaptive, epsilon, sstp_act in [(True, 1e-1, None),(True, 1e-2, None), (True, 1e-3, None), (False, None, None), (True, None, 10)]:
 
         outfile = f"test_WBF.nc"
-        z, ice_mix_ratio, liq_mix_ratio, ice_conc, act_conc, ice_r, act_r, sstp_cond_mean, sstp_dep_mean, variance_liq, variance_ice = run_scheme(outfile, aerosol, w_max, z_max, adaptive, epsilon)           
+        z, ice_mix_ratio, liq_mix_ratio, ice_conc, act_conc, ice_r, act_r, sstp_cond_mean, sstp_dep_mean, variance_liq, variance_ice = run_scheme(outfile, aerosol, w_max, z_max, adaptive, epsilon, sstp_act)           
 
         if not adaptive:
             c = 'grey'
             s = ':'
             l = 'non-adaptive'
+        elif sstp_act == 10:
+            c = 'green'
+            s = ':'
+            l = 'sstp_act = 10'
         else:
             s = '-'
             l = '$\epsilon$ = '+str(epsilon)
@@ -128,9 +129,6 @@ def make_figure(aerosol, w_max, z_max):
             ax[0,4].plot(sstp_cond_mean, z, color=c, linestyle=s)
 
 
-        m = len(liq_mix_ratio)//2
-
-
         for var, axis in [
                           (liq_mix_ratio, ax[0,0]), (ice_mix_ratio, ax[1,0]),
                           (act_conc, ax[0,1]), (ice_conc, ax[1,1]),
@@ -138,25 +136,27 @@ def make_figure(aerosol, w_max, z_max):
                           (variance_liq, ax[0,3]), (variance_ice, ax[1,3]),
                           (sstp_cond_mean, ax[0,4]), (sstp_dep_mean, ax[1,4])
                            ]:
-
+            if not adaptive and (var is sstp_cond_mean or var is sstp_dep_mean):
+                continue
+            
             axis.annotate(
                 '',
-                xy=(var[len(var)//4+6], z[len(z)//4+6]),    # Grot strzałki
-                xytext=(var[len(var)//4], z[len(z)//4]), # Początek strzałki
+                xy=(var[len(var)//4+8], z[len(z)//4+8]),    # Grot strzałki
+                xytext=(var[len(var)//4+6], z[len(z)//4+6]), # Początek strzałki
                 arrowprops=dict(
-                    arrowstyle='->',
+                    arrowstyle='simple',
                     color=c,
-                    linewidth=1
+                    linewidth=2
                 )
             )
             axis.annotate(
                 '',
                 xy=(var[3*len(var)//4+8], z[3*len(z)//4+8]),    # Grot strzałki
-                xytext=(var[3*len(var)//4+2], z[3*len(z)//4+2]), # Początek strzałki
+                xytext=(var[3*len(var)//4+6], z[3*len(z)//4+6]), # Początek strzałki
                 arrowprops=dict(
-                    arrowstyle='->',
+                    arrowstyle='simple',
                     color=c,
-                    linewidth=1
+                    linewidth=2
                 )
             )
 
@@ -168,22 +168,19 @@ def make_figure(aerosol, w_max, z_max):
     ax[1,0].set_ylabel('z [km]')
     ax[0,0].set_xlabel('liquid mix ratio [g/kg]')
     ax[1,0].set_xlabel('ice mix ratio [g/kg]')
-    ax[0,1].set_xlabel('liquid concentration [1/mg]')
-    ax[1,1].set_xlabel('ice concentration [1/mg]')
-    ax[0,2].set_xlabel("liquid average radius [$\mu$m]")
-    ax[1,2].set_xlabel("ice average radius [$\mu$m]")
-    ax[0,3].set_xlabel('liquid standard deviation [$\mu$m]')
-    ax[1,3].set_xlabel('ice standard deviation [$\mu$m]')
+    ax[0,1].set_xlabel('liquid conc [1/mg]')
+    ax[1,1].set_xlabel('ice conc [1/mg]')
+    ax[0,2].set_xlabel("liquid avg radius [$\mu$m]")
+    ax[1,2].set_xlabel("ice avg radius [$\mu$m]")
+    ax[0,3].set_xlabel('liquid standard dev [$\mu$m]')
+    ax[1,3].set_xlabel('ice standard dev [$\mu$m]')
     ax[0,4].set_xlabel("sstp mean condensation")
     ax[1,4].set_xlabel("sstp mean deposition")
 
-    # ax[0,3].ticklabel_format(style='plain', useOffset=False)
-    # ax[0,3].xaxis.set_major_locator(MaxNLocator(4))
+    ax[0,4].set_xlim(0,10.5)
+    ax[1,4].set_xlim(0,10.5)
 
-    ax[0,4].set_xlim(0,10.1)
-    ax[1,4].set_xlim(0,10.1)
-
-    fig.tight_layout(rect=(0, 0.10, 1, 0.97))
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
     aerosol_str = "pristine" if aerosol==pristine else "polluted"
     out_png = "test_adaptive_WBF_w_"+str(w_max)+"_"+aerosol_str+".png"
     plt.suptitle('w = '+str(w_max)+' m/s, '+aerosol_str)
@@ -193,6 +190,6 @@ def make_figure(aerosol, w_max, z_max):
 
 for w_max,z_max in zip(w_list, z_max_list):
     print(w_max, z_max)
-    for aerosol in [pristine]: #, polluted]:
+    for aerosol in [pristine, polluted]:
         make_figure(aerosol, w_max, z_max)
 plt.show()
