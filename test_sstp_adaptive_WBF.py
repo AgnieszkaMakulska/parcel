@@ -11,6 +11,7 @@ from parcel import parcel
 from scipy.io import netcdf
 import matplotlib.pyplot as plt
 from libcloudphxx import common
+plt.rcParams.update({'font.size': 14})
 
 w_list = [1., 2.5, 5.]
 z_max_list = [1250., 2000, 3000.]
@@ -87,9 +88,9 @@ def run_scheme(outfile, aerosol, w_max, z_max, adaptive, epsilon, sstp_act, sstp
 
 def make_figure(aerosol, w_max, z_max):
 
-    fig, ax = plt.subplots(2, 5, figsize=(13.0, 10.0), sharey=True, squeeze=True)
+    fig, ax = plt.subplots(2, 5, figsize=(17.5, 10.0), sharey=True, squeeze=True)
 
-    for adaptive, epsilon, sstp_act, sstp_cond in [(True, 1e-1, None, 10),(True, 1e-2, None, 10), (True, 1e-3, None, 10), (False, None, None, 10), (True, None, 10, 1)]:
+    for adaptive, epsilon, sstp_act, sstp_cond in [(False, None, None, 10), (True, None, 10, 1), (True, 1e-1, None, 10),(True, 1e-2, None, 10), (True, 1e-3, None, 10)]:
 
         outfile = f"test_WBF.nc"
         z, ice_mix_ratio, liq_mix_ratio, ice_conc, act_conc, ice_r, act_r, sstp_cond_mean, sstp_dep_mean, std_dev_liq, std_dev_ice, step_cond_walltime_ms = run_scheme(outfile, aerosol, w_max, z_max, adaptive, epsilon, sstp_act, sstp_cond)           
@@ -97,16 +98,19 @@ def make_figure(aerosol, w_max, z_max):
         walltime_mean = np.nanmean(step_cond_walltime_ms)
 
         if not adaptive:
-            c = 'grey'
-            s = ':'
-            l = 'non-adaptive'+', t = '+str(round(walltime_mean,1))+' ms'
-        elif sstp_act == 10:
-            c = 'darkorange'
-            s = ':'
-            l = 'sstp_act = 10'+', t = '+str(round(walltime_mean,1))+' ms'
-        else:
+            c = 'darkgrey'
             s = '-'
-            l = '$\epsilon$ = '+str(epsilon)+', t = '+str(round(walltime_mean,1))+' ms'
+            l = '10 substeps, '+str(round(walltime_mean,1))+' ms'
+            lw = 3
+        elif sstp_act == 10:
+            c = 'gold'
+            s = ':'
+            l = '10 activation substeps, '+str(round(walltime_mean,1))+' ms'
+            lw = 2
+        else:
+            s = ':'
+            l = 'adaptive, $\epsilon$ = '+str(epsilon)+', '+str(round(walltime_mean,1))+' ms'
+            lw = 2
             if epsilon == 1e-3:
                 c = 'blue'
             elif epsilon == 1e-2:
@@ -114,17 +118,18 @@ def make_figure(aerosol, w_max, z_max):
             else:
                 c = 'violet'
 
-        ax[1,0].plot(ice_mix_ratio, z, color=c, label=l, linestyle=s)
-        ax[0,0].plot(liq_mix_ratio, z, color=c, label=l, linestyle=s)
-        ax[1,1].plot(ice_conc, z, color=c, label=l, linestyle=s)
-        ax[0,1].plot(act_conc, z, color=c, label=l, linestyle=s)
-        ax[1,2].plot(ice_r, z, color=c, linestyle=s)
-        ax[0,2].plot(act_r, z, color=c, linestyle=s)
-        ax[1,3].plot(std_dev_ice, z, color=c, label=l, linestyle=s)
-        ax[0,3].plot(std_dev_liq, z, color=c, label=l, linestyle=s)
+        ax[1,0].plot(ice_mix_ratio, z, color=c, label=l, linestyle=s, linewidth = lw)
+        ax[0,0].plot(liq_mix_ratio, z, color=c, label=l, linestyle=s, linewidth = lw)
+        ax[1,1].plot(ice_conc, z, color=c, label=l, linestyle=s, linewidth = lw)
+        ax[0,1].plot(act_conc, z, color=c, label=l, linestyle=s, linewidth = lw)
+        ax[1,2].plot(ice_r, z, color=c, linestyle=s, linewidth = lw)
+        ax[0,2].plot(act_r, z, color=c, linestyle=s, linewidth = lw)
+        ax[0,2].plot(act_r, z, color=c, linestyle=s, linewidth = lw)
+        ax[1,3].plot(std_dev_ice, z, color=c, label=l, linestyle=s, linewidth = lw)
+        ax[0,3].plot(std_dev_liq, z, color=c, label=l, linestyle=s, linewidth = lw)
         if adaptive:
-            ax[1,4].plot(sstp_dep_mean, z, color=c, linestyle=s)
-            ax[0,4].plot(sstp_cond_mean, z, color=c, linestyle=s)
+            ax[1,4].plot(sstp_dep_mean, z, color=c, linestyle=s, linewidth = lw)
+            ax[0,4].plot(sstp_cond_mean, z, color=c, linestyle=s, linewidth = lw)
 
 
         for var, axis in [
@@ -160,23 +165,23 @@ def make_figure(aerosol, w_max, z_max):
 
     ax[0,0].set_ylabel('z [km]')
     ax[1,0].set_ylabel('z [km]')
-    ax[0,0].set_xlabel('liquid mix ratio [g/kg]')
-    ax[1,0].set_xlabel('ice mix ratio [g/kg]')
-    ax[0,1].set_xlabel('liquid conc [1/mg]')
-    ax[1,1].set_xlabel('ice conc [1/mg]')
-    ax[0,2].set_xlabel("liquid avg radius [$\mu$m]")
-    ax[1,2].set_xlabel("ice avg radius [$\mu$m]")
-    ax[0,3].set_xlabel('liquid standard dev [$\mu$m]')
-    ax[1,3].set_xlabel('ice standard dev [$\mu$m]')
-    ax[0,4].set_xlabel("sstp mean condensation")
-    ax[1,4].set_xlabel("sstp mean deposition")
+    ax[0,0].set_xlabel('liquid mixing ratio [g/kg]')
+    ax[1,0].set_xlabel('ice mixing ratio [g/kg]')
+    ax[0,1].set_xlabel('liquid conc. [1/mg]')
+    ax[1,1].set_xlabel('ice conc. [1/mg]')
+    ax[0,2].set_xlabel("liquid mean radius [$\mu$m]")
+    ax[1,2].set_xlabel("ice mean radius [$\mu$m]")
+    ax[0,3].set_xlabel('liquid std. deviation [$\mu$m]')
+    ax[1,3].set_xlabel('ice std. deviation [$\mu$m]')
+    ax[0,4].set_xlabel("liquid sstp mean")
+    ax[1,4].set_xlabel("ice sstp mean")
 
     ax[0,4].set_xlim(0,10.5)
     ax[1,4].set_xlim(0,10.5)
 
     handles, labels = ax[0,0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="center right", bbox_to_anchor=(0.16, 0.5))
-    fig.tight_layout(rect=[0.15, 0, 1, 0.95])
+    fig.legend(handles, labels, loc="center right", bbox_to_anchor=(0.22, 0.5))
+    fig.tight_layout(rect=[0.21, 0, 1, 0.95])
     aerosol_str = "pristine" if aerosol==pristine else "polluted"
     out_png = "test_adaptive_WBF_w_"+str(w_max)+"_"+aerosol_str+".png"
     plt.suptitle('w = '+str(w_max)+' m/s, '+aerosol_str)
@@ -185,7 +190,6 @@ def make_figure(aerosol, w_max, z_max):
     return fig
 
 for w_max,z_max in zip(w_list, z_max_list):
-    print(w_max, z_max)
     for aerosol in [pristine, polluted]:
         make_figure(aerosol, w_max, z_max)
 plt.show()
