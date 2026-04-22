@@ -204,3 +204,11 @@ def _micro_step(micro, state, info, opts):
   micro.diag_all()
   micro.diag_sd_conc()
   state["sd_conc"] = np.frombuffer(micro.outbuf())[0]
+
+  micro.diag_water()
+  micro.diag_sd_conc()
+  state["sd_conc_liq"] = np.frombuffer(micro.outbuf())[0]
+
+  micro.diag_ice()
+  micro.diag_sd_conc()
+  state["sd_conc_ice"] = np.frombuffer(micro.outbuf())[0]

@@ -13,27 +13,29 @@ import matplotlib.pyplot as plt
 from libcloudphxx import common
 plt.rcParams.update({'font.size': 14})
 
-w_list = [1., 2.5, 5.]
-z_max_list = [1250., 2000, 3000.]
+w_list = [1]#[1., 2.5, 5.]
+z_max_list = [2000]#[1250., 2500, 3000.]
 outfile = f"test_WBF.nc"
 
 polluted = '{"polluted": {"kappa": 0.61, "rd_insol" : 0.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]},' \
                 '"INP": {"kappa": 0.61, "rd_insol" : 0.5e-6, "mean_r": [0.029e-6], "gstdev": [1.36], "n_tot": [10.0e6]}}' # low concentration of INPs
 
-pristine = '{"pristine": {"kappa": 0.61, "rd_insol": 0.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]},' \
+pristine = '{"pristine": {"kappa": 0.61, "rd_insol": 0.5e-6, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]},' \
                 '"INP": {"kappa": 0.61, "rd_insol" : 0.5e-6, "mean_r": [0.029e-6], "gstdev": [1.36], "n_tot": [10.0e6]}}' # low concentration of INPs
+
+aerosol_list = [pristine]#, polluted]
 
 def run_scheme(aerosol, w_max, z_max, adaptive, epsilon, sstp_act, sstp_cond):
     args = dict(
         p_0=100000,
         RH_0=0.9,
-        T_0=277,
+        T_0=265.,
         aerosol = aerosol,
-        sd_conc=100,
+        sd_conc=1000,
         dt=1,
         z_max=None,
         w = lambda t: w_max if t <= z_max/w_max else -w_max,
-        t = 2 * z_max / w_max,
+        t = z_max / w_max,#2 * z_max / w_max,
         outfile=outfile,
         outfreq=10,
         scheme="lgrngn",
@@ -58,6 +60,7 @@ def run_scheme(aerosol, w_max, z_max, adaptive, epsilon, sstp_act, sstp_cond):
 
     with netcdf.netcdf_file(outfile, 'r') as f:
         z = np.array(f.variables['z'][:]).squeeze()
+        T = np.array(f.variables['T'][:]).squeeze()
         act_m0 = np.array(f.variables['act_m0'][:]).squeeze()
         act_m1 = np.array(f.variables['act_m1'][:]).squeeze()
         act_m2 = np.array(f.variables['act_m2'][:]).squeeze()
@@ -83,7 +86,7 @@ def run_scheme(aerosol, w_max, z_max, adaptive, epsilon, sstp_act, sstp_cond):
         step_cond_walltime_ms = np.array(f.variables['step_cond_walltime_ms'][:]).squeeze()
 
     os.remove(outfile)
-    return z/1000, ice_mix_ratio*1e3, liq_mix_ratio*1e3, ice_conc/1e6, act_conc/1e6, ice_r*1e6, act_r*1e6, sstp_cond_mean, sstp_dep_mean, std_dev_liq*1e6, std_dev_ice*1e6, step_cond_walltime_ms
+    return z/1000, ice_mix_ratio*1e3, liq_mix_ratio*1e3, ice_conc/1e6, act_conc/1e6, ice_r*1e6, act_r*1e6, sstp_cond_mean, sstp_dep_mean, std_dev_liq*1e6, std_dev_ice*1e6, step_cond_walltime_ms, T
 
 
 
@@ -91,9 +94,10 @@ def make_figure(aerosol, w_max, z_max):
 
     fig, ax = plt.subplots(2, 5, figsize=(17.5, 10.0), sharey=True, squeeze=True)
 
-    for adaptive, epsilon, sstp_act, sstp_cond in [(False, None, None, 10), (True, None, 10, 1), (True, 1e-1, None, 10),(True, 1e-2, None, 10), (True, 1e-3, None, 10)]:
-
-        z, ice_mix_ratio, liq_mix_ratio, ice_conc, act_conc, ice_r, act_r, sstp_cond_mean, sstp_dep_mean, std_dev_liq, std_dev_ice, step_cond_walltime_ms = run_scheme(aerosol, w_max, z_max, adaptive, epsilon, sstp_act, sstp_cond)           
+    #for adaptive, epsilon, sstp_act, sstp_cond in [(False, None, None, 10), (True, None, 10, 1), (True, 1e-1, None, 10),(True, 1e-2, None, 10), (True, 1e-3, None, 10)]:
+    for adaptive, epsilon, sstp_act, sstp_cond in [(True, 1e-3, None, 10)]:
+    
+        z, ice_mix_ratio, liq_mix_ratio, ice_conc, act_conc, ice_r, act_r, sstp_cond_mean, sstp_dep_mean, std_dev_liq, std_dev_ice, step_cond_walltime_ms, T = run_scheme(aerosol, w_max, z_max, adaptive, epsilon, sstp_act, sstp_cond)           
 
         walltime_mean = np.nanmean(step_cond_walltime_ms)
 
@@ -125,8 +129,10 @@ def make_figure(aerosol, w_max, z_max):
         ax[1,2].plot(ice_r, z, color=c, linestyle=s, linewidth = lw)
         ax[0,2].plot(act_r, z, color=c, linestyle=s, linewidth = lw)
         ax[0,2].plot(act_r, z, color=c, linestyle=s, linewidth = lw)
-        ax[1,3].plot(std_dev_ice, z, color=c, label=l, linestyle=s, linewidth = lw)
-        ax[0,3].plot(std_dev_liq, z, color=c, label=l, linestyle=s, linewidth = lw)
+        # ax[1,3].plot(std_dev_ice, z, color=c, label=l, linestyle=s, linewidth = lw)
+        # ax[0,3].plot(std_dev_liq, z, color=c, label=l, linestyle=s, linewidth = lw)
+        ax[1,3].plot(T, z, color=c, label=l, linestyle=s, linewidth = lw)
+        ax[0,3].plot(T, z, color=c, label=l, linestyle=s, linewidth = lw)
         if adaptive:
             ax[1,4].plot(sstp_dep_mean, z, color=c, linestyle=s, linewidth = lw)
             ax[0,4].plot(sstp_cond_mean, z, color=c, linestyle=s, linewidth = lw)
@@ -183,12 +189,13 @@ def make_figure(aerosol, w_max, z_max):
     fig.legend(handles, labels, loc="center right", bbox_to_anchor=(0.22, 0.5))
     fig.tight_layout(rect=[0.21, 0, 1, 0.95])
     aerosol_str = "pristine" if aerosol==pristine else "polluted"
-    out_png = "plots/outputs/test_adaptive_WBF_w_"+str(w_max)+"_"+aerosol_str+".svg"
+    out_png = "plots/outputs/adaptive/test_adaptive_WBF_w_"+str(w_max)+"_"+aerosol_str+"_timedep.svg"
     plt.suptitle('w = '+str(w_max)+' m/s, '+aerosol_str)
     plt.savefig(out_png, dpi=200)
 
     return fig
 
 for w_max,z_max in zip(w_list, z_max_list):
-    for aerosol in [pristine, polluted]:
+    for aerosol in aerosol_list:
         make_figure(aerosol, w_max, z_max)
+        plt.show()

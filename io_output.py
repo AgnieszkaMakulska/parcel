@@ -125,6 +125,12 @@ def _output_init(micro, opts, spectra):
   fout.createVariable("sd_conc", 'd', ('t',))
   fout.variables["sd_conc"].unit = "1"
 
+  fout.createVariable("sd_conc_liq", 'd', ('t',))
+  fout.variables["sd_conc_liq"].unit = "1"
+
+  fout.createVariable("sd_conc_ice", 'd', ('t',))
+  fout.variables["sd_conc_ice"].unit = "1"
+
   # wall-clock time spent inside step_cond (per parcel output timestep)
   fout.createVariable("step_cond_walltime_ms", 'd', ('t',))
   fout.variables["step_cond_walltime_ms"].unit = "ms"
