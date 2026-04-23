@@ -1,5 +1,5 @@
 """
-Checking if mixing between substeps is important for the WBF process
+Checking if mixing between substeps is important
 """
 
 import sys, os
@@ -13,21 +13,19 @@ import matplotlib.pyplot as plt
 from libcloudphxx import common
 plt.rcParams.update({'font.size': 14})
 
-sstp = 90
-w_list = [1.]#[1., 2.5, 5.]
+dt = 5
+sstp = 50
+w_list = [1.]
 z_max_list = [3000]
 outfile = f"test_WBF.nc"
 
 polluted = '{"polluted": {"kappa": 0.61, "rd_insol" : 0.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]},' \
                 '"INP": {"kappa": 0.61, "rd_insol" : 0.5e-6, "mean_r": [0.029e-6], "gstdev": [1.36], "n_tot": [10.0e6]}}' # low concentration of INPs
 
-#pristine = '{"pristine": {"kappa": 0.61, "rd_insol": 0.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]},' \
-#                '"INP": {"kappa": 0.61, "rd_insol" : 0.5e-6, "mean_r": [0.029e-6], "gstdev": [1.36], "n_tot": [10.0e6]}}' # low concentration of INPs
+pristine = '{"pristine": {"kappa": 0.61, "rd_insol": 0.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]},' \
+                '"INP": {"kappa": 0.61, "rd_insol" : 0.5e-6, "mean_r": [0.029e-6], "gstdev": [1.36], "n_tot": [10.0e6]}}' # low concentration of INPs
 
-pristine = '{"pristine": {"kappa": 0.61, "rd_insol": 0.0, "mean_r": [0.011e-6], "gstdev": [1.2], "n_tot": [125.0e6]}}'
-
-
-aerosol_list = [pristine]#, polluted]
+monomod = '{"monomodal": {"kappa": 0.61, "rd_insol": 0.0, "mean_r": [0.011e-6], "gstdev": [1.2], "n_tot": [125.0e6]}}'
 
 monodisperse = {
     "ammonium_sulfate": {
@@ -37,6 +35,9 @@ monodisperse = {
     }
 }
 
+aerosol_list = [monomod]
+
+
 def run_scheme(mixing, adaptive, aerosol, w_max, z_max):
     args = dict(
         p_0=100000,
@@ -45,7 +46,7 @@ def run_scheme(mixing, adaptive, aerosol, w_max, z_max):
         aerosol = aerosol,
         #dry_sizes = monodisperse,
         sd_conc=100,
-        dt=9,
+        dt=dt,
         z_max=None,
         w = lambda t: w_max if t <= z_max/w_max else -w_max,
         t = z_max / w_max,
@@ -94,7 +95,7 @@ def run_scheme(mixing, adaptive, aerosol, w_max, z_max):
                            0))
         sd_conc_liq = np.array(f.variables['sd_conc_liq'][:]).squeeze()
         sd_conc_ice = np.array(f.variables['sd_conc_ice'][:]).squeeze()
-    #os.remove(outfile)
+    os.remove(outfile)
     return z/1000, rv*1e3, RH, T, ice_mix_ratio*1e3, liq_mix_ratio*1e3, ice_conc/1e6, act_conc/1e6, ice_r*1e6, act_r*1e6, std_dev_liq*1e6, std_dev_ice*1e6, sd_conc_liq, sd_conc_ice
 
 
@@ -103,7 +104,7 @@ def make_figure(aerosol, w_max, z_max):
 
     fig, ax = plt.subplots(2, 4, figsize=(15, 10.0), sharey=True, squeeze=True)
 
-    for (mixing, adaptive) in [(False, False), (True, False)]:#, (True, True)]:#[(True, False), (True, True), (False, True)]:
+    for (mixing, adaptive) in [(False, False), (True, False)]:
 
         s = ':'
         lw = 2
@@ -143,8 +144,13 @@ def make_figure(aerosol, w_max, z_max):
     handles, labels = ax[0,0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="center right", bbox_to_anchor=(0.21, 0.5))
     fig.tight_layout(rect=[0.2, 0, 1, 0.95])
-    aerosol_str = "pristine" if aerosol==pristine else "polluted"
-    out_png = "plots/outputs/coupled_uncoupled/test_mixing_w_"+str(w_max)+".svg"
+    if aerosol == pristine:
+        aerosol_str = "pristine"
+    elif aerosol == polluted:
+        aerosol_str = "polluted"
+    else:
+        aerosol_str = "monomodal"
+    out_png = "plots/outputs/coupled_uncoupled/test_mixing_"+aerosol_str+"_dt_"+str(dt)+".svg"
     plt.suptitle('w = '+str(w_max)+' m/s, '+aerosol_str)
     plt.savefig(out_png, dpi=200)
 
