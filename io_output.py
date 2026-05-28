@@ -8,6 +8,7 @@ from parcel_common import _Chem_g_id, _Chem_a_id
 def _output_bins(fout, t, micro, opts, spectra):
   for dim, dct in spectra.items():
     for bin in range(dct["nbin"]):
+
       if dct["drwt"] == 'wet':
         micro.diag_wet_rng(
           fout.variables[dim+"_r_wet"][bin],
@@ -19,30 +20,46 @@ def _output_bins(fout, t, micro, opts, spectra):
           fout.variables[dim+"_r_dry"][bin] + fout.variables[dim+"_dr_dry"][bin]
         )
       elif dct["drwt"] == 'ice_a':
-        micro.diag_ice_a_rng(
-          fout.variables[dim+"_r_ice_a"][bin],
-          fout.variables[dim+"_r_ice_a"][bin] + fout.variables[dim+"_dr_ice_a"][bin]
-        )
+        if micro.opts_init.ice_switch:
+          micro.diag_ice_a_rng(
+            fout.variables[dim+"_r_ice_a"][bin],
+            fout.variables[dim+"_r_ice_a"][bin] + fout.variables[dim+"_dr_ice_a"][bin]
+          )
       elif dct["drwt"] == 'ice_c':
-        micro.diag_ice_c_rng(
-          fout.variables[dim+"_r_ice_c"][bin],
-          fout.variables[dim+"_r_ice_c"][bin] + fout.variables[dim+"_dr_ice_c"][bin]
-        )
-      else: raise Exception("drwt should be wet or dry or ice_a or ice_c")
+        if micro.opts_init.ice_switch:
+          micro.diag_ice_c_rng(
+            fout.variables[dim+"_r_ice_c"][bin],
+            fout.variables[dim+"_r_ice_c"][bin] + fout.variables[dim+"_dr_ice_c"][bin]
+          )
+      else:
+        raise Exception("drwt should be wet or dry or ice_a or ice_c")
 
       for vm in dct["moms"]:
         if type(vm) == int:
           # calculating moments
+          out_var = fout.variables[dim+'_m'+str(vm)]
+          out_idx = (int(t), int(bin))
+
           if dct["drwt"] == 'wet':
             micro.diag_wet_mom(vm)
+            out_var[out_idx] = np.frombuffer(micro.outbuf())
           elif dct["drwt"] == 'dry':
             micro.diag_dry_mom(vm)
+            out_var[out_idx] = np.frombuffer(micro.outbuf())
           elif dct["drwt"] == 'ice_a':
-            micro.diag_ice_a_mom(vm)
+            if micro.opts_init.ice_switch:
+              micro.diag_ice_a_mom(vm)
+              out_var[out_idx] = np.frombuffer(micro.outbuf())
+            else:
+              out_var[out_idx] = np.zeros(1)
           elif dct["drwt"] == 'ice_c':
-            micro.diag_ice_c_mom(vm)
-          else: raise Exception("drwt should be wet or dry or ice_a or ice_c")
-          fout.variables[dim+'_m'+str(vm)][int(t), int(bin)] = np.frombuffer(micro.outbuf())
+            if micro.opts_init.ice_switch:
+              micro.diag_ice_c_mom(vm)
+              out_var[out_idx] = np.frombuffer(micro.outbuf())
+            else:
+              out_var[out_idx] = np.zeros(1)
+          else:
+            raise Exception("drwt should be wet or dry or ice_a or ice_c")
         else:
           # calculate chemistry
           micro.diag_chem(_Chem_a_id[vm])
@@ -89,7 +106,8 @@ def _output_init(micro, opts, spectra):
         fout.variables[name+'_m'+str(vm)].unit = 'm^'+str(vm)+' (kg of dry air)^-1'
 
   units = {"z"  : "m",     "t"   : "s",     "r_v"  : "kg/kg", "th_d" : "K", "rhod" : "kg/m3",
-           "p"  : "Pa",    "T"   : "K",     "RH"   : "1",    "T_blk"   : "K",     "RH_blk"   : "1"
+           "p"  : "Pa",    "T"   : "K",     "RH"   : "1",    "T_blk"   : "K",     "RH_blk"   : "1",
+           "ice_mix_ratio": "kg/kg"
   }
 
   if micro.opts_init.chem_switch:
@@ -101,17 +119,12 @@ def _output_init(micro, opts, spectra):
     fout.createVariable(var_name, 'd', ('t',))
     fout.variables[var_name].unit = unit
 
-  if micro.opts_init.ice_switch:
-    fout.createVariable("ice_mix_ratio", 'd', ('t',))
-    fout.variables["ice_mix_ratio"].unit = "kg/kg"
-
   if micro.opts_init.adaptive_sstp_cond:
     fout.createVariable("sstp_cond_mean", 'd', ('t',))
     fout.variables["sstp_cond_mean"].unit = "1"
-
-    if micro.opts_init.ice_switch:
-      fout.createVariable("sstp_dep_mean", 'd', ('t',))
-      fout.variables["sstp_dep_mean"].unit = "1"
+    
+    fout.createVariable("sstp_dep_mean", 'd', ('t',))
+    fout.variables["sstp_dep_mean"].unit = "1"
 
   fout.createVariable("act_m0", 'd', ('t',))
   fout.variables["act_m0"].unit = "1/kg"
