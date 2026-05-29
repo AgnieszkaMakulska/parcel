@@ -128,7 +128,6 @@ def make_figure(aerosol, w_max, z_max):
         ax[0,1].plot(act_conc, z, color=c, label=l, linestyle=s, linewidth = lw)
         ax[1,2].plot(ice_r, z, color=c, linestyle=s, linewidth = lw)
         ax[0,2].plot(act_r, z, color=c, linestyle=s, linewidth = lw)
-        ax[0,2].plot(act_r, z, color=c, linestyle=s, linewidth = lw)
         # ax[1,3].plot(std_dev_ice, z, color=c, label=l, linestyle=s, linewidth = lw)
         # ax[0,3].plot(std_dev_liq, z, color=c, label=l, linestyle=s, linewidth = lw)
         ax[1,3].plot(T, z, color=c, label=l, linestyle=s, linewidth = lw)
