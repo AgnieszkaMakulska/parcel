@@ -13,11 +13,11 @@ import matplotlib.pyplot as plt
 from libcloudphxx import common
 plt.rcParams.update({'font.size': 14})
 
-dt = 8
-sstp = 80
-w_list = [0.2]
-z_max_list = [1000]
-sd_conc = 10
+dt = 1
+sstp = 10
+w_list = [2.5]
+z_max_list = [1200] #1000 for w=0.2
+sd_conc = 100
 outfile = f"test_WBF.nc"
 
 polluted = '{"polluted": {"kappa": 0.61, "rd_insol" : 0.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]},' \
@@ -36,7 +36,7 @@ monodisperse = {
     }
 }
 
-aerosol_list = [polluted]
+aerosol_list = [pristine]
 
 
 def run_scheme(mixing, adaptive, aerosol, w_max, z_max):
@@ -105,7 +105,7 @@ def make_figure(aerosol, w_max, z_max):
 
     fig, ax = plt.subplots(2, 4, figsize=(15, 10.0), sharey=True, squeeze=True)
 
-    for (mixing, adaptive) in [(False, False)]: #, (True, False)]:
+    for (mixing, adaptive) in [(True, False), (False, False)]:
 
         s = ':'
         lw = 2
@@ -120,42 +120,27 @@ def make_figure(aerosol, w_max, z_max):
         r_tot = np.array(rv + liq_mix_ratio + ice_mix_ratio)
 
 
-        ax[1,0].plot(rv, z, color=c, label=l, linestyle=s, linewidth = lw)
-        # ax[0,0].plot(liq_mix_ratio, z, color=c, label=l, linestyle=s, linewidth = lw)
-        ax[1,2].plot(th, z, color=c, label=l, linestyle=s, linewidth = lw)
-        # ax[0,1].plot(act_conc, z, color=c, label=l, linestyle=s, linewidth = lw)
-        ax[1,3].plot(RH, z, color=c, linestyle=s, linewidth = lw)
-        # ax[0,2].plot(act_r, z, color=c, linestyle=s, linewidth = lw)
-        # ax[0,3].plot(RH, z, color=c, label=l, linestyle=s, linewidth = lw)
-        ax[1,1].plot(np.round(r_tot,1), z, color=c, label=l, linestyle=s, linewidth = lw)
-        #ax[1,0].plot(ice_mix_ratio, z, color=c, label=l, linestyle=s, linewidth = lw)
         ax[0,0].plot(liq_mix_ratio, z, color=c, label=l, linestyle=s, linewidth = lw)
-        #ax[1,1].plot(ice_conc, z, color=c, label=l, linestyle=s, linewidth = lw)
         ax[0,1].plot(act_conc, z, color=c, label=l, linestyle=s, linewidth = lw)
-        #ax[1,2].plot(ice_r, z, color=c, linestyle=s, linewidth = lw)
         ax[0,2].plot(act_r, z, color=c, linestyle=s, linewidth = lw)
-        #ax[1,3].plot(std_dev_ice, z, color=c, label=l, linestyle=s, linewidth = lw)
         ax[0,3].plot(std_dev_liq, z, color=c, label=l, linestyle=s, linewidth = lw)
+        ax[1,0].plot(rv, z, color=c, label=l, linestyle=s, linewidth = lw)
+        ax[1,1].plot(np.round(r_tot,1), z, color=c, label=l, linestyle=s, linewidth = lw)
+        ax[1,2].plot(th, z, color=c, label=l, linestyle=s, linewidth = lw)
+        ax[1,3].plot(RH, z, color=c, linestyle=s, linewidth = lw)
         
-    # ax[0,0].set_ylabel('z [km]')
-    # ax[1,0].set_ylabel('z [km]')
-    # ax[0,0].set_xlabel('liquid mixing ratio [g/kg]')
-    # ax[1,0].set_xlabel('rv [g/kg]')
-    # ax[0,1].set_xlabel('liquid conc. [1/mg]')
-    ax[1,2].set_xlabel('th [K]')
-    # ax[0,2].set_xlabel(f'liquid mean radius [$\mu$m]')
-    # ax[1,3].set_xlabel(f'ice mix ratio [g/kg]')
-    # ax[0,3].set_xlabel(f'RH')
-    # ax[1,1].set_xlabel(f'r_tot [g/kg]')
+
+    
     ax[0,0].set_ylabel('z [km]')
     ax[1,0].set_ylabel('z [km]')
+
     ax[0,0].set_xlabel('liquid mixing ratio [g/kg]')
-    ax[1,0].set_xlabel('rv [g/kg]')#'ice mixing ratio [g/kg]')
     ax[0,1].set_xlabel('liquid conc. [1/mg]')
-    ax[1,1].set_xlabel('r_tot [g/kg]')#'ice conc. [1/mg]')
     ax[0,2].set_xlabel(f'liquid mean radius [$\mu$m]')
-    #ax[1,2].set_xlabel(f'ice mean radius [$\mu$m]')
     ax[0,3].set_xlabel(f'liquid std dev')
+    ax[1,0].set_xlabel('rv [g/kg]')
+    ax[1,1].set_xlabel('r_tot [g/kg]')
+    ax[1,2].set_xlabel('th [K]')
     ax[1,3].set_xlabel(f'RH')
     handles, labels = ax[0,0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="center right", bbox_to_anchor=(0.21, 0.5))
@@ -166,8 +151,8 @@ def make_figure(aerosol, w_max, z_max):
         aerosol_str = "polluted"
     else:
         aerosol_str = "monomodal"
-    out_png = "plots/outputs/coupled_uncoupled/test_mixing_dt_"+str(dt)+"_w_"+str(w_max)+"_"+str(sd_conc)+"_SD"+".svg"
-    plt.suptitle('w = '+str(w_max)+' m/s, dt = '+str(dt)+', '+str(sstp)+' substeps')
+    out_png = "plots/outputs/coupled_uncoupled/test_mixing_"+aerosol_str+"_dt_"+str(dt)+"_w_"+str(w_max)+".svg"
+    plt.suptitle('w = '+str(w_max)+' m/s, dt = '+str(dt)+', '+str(sstp)+' substeps, '+ aerosol_str)
     plt.savefig(out_png, dpi=200)
 
     return fig
