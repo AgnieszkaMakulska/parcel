@@ -151,7 +151,7 @@ def make_figure(aerosol, w_max, z_max):
         aerosol_str = "polluted"
     else:
         aerosol_str = "monomodal"
-    out_png = "plots/outputs/coupled_uncoupled/test_mixing_"+aerosol_str+"_dt_"+str(dt)+"_w_"+str(w_max)+".svg"
+    out_png = "plots/outputs/coupled_uncoupled/test_mixing_"+aerosol_str+"_dt_"+str(dt)+"_w_"+str(w_max)+".pdf"
     plt.suptitle('w = '+str(w_max)+' m/s, dt = '+str(dt)+', '+str(sstp)+' substeps, '+ aerosol_str)
     plt.savefig(out_png, dpi=200)
 

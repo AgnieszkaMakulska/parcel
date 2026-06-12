@@ -188,7 +188,7 @@ def make_figure(aerosol, w_max, z_max):
     fig.legend(handles, labels, loc="center right", bbox_to_anchor=(0.22, 0.5))
     fig.tight_layout(rect=[0.21, 0, 1, 0.95])
     aerosol_str = "pristine" if aerosol==pristine else "polluted"
-    out_png = "plots/outputs/adaptive/test_adaptive_WBF_w_"+str(w_max)+"_"+aerosol_str+"_timedep.svg"
+    out_png = "plots/outputs/adaptive/test_adaptive_WBF_w_"+str(w_max)+"_"+aerosol_str+"_timedep.pdf"
     plt.suptitle('w = '+str(w_max)+' m/s, '+aerosol_str)
     plt.savefig(out_png, dpi=200)
 
