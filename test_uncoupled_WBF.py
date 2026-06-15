@@ -13,10 +13,10 @@ import matplotlib.pyplot as plt
 from libcloudphxx import common
 plt.rcParams.update({'font.size': 14})
 
-dt = 1
-sstp = 10
+dt = 10
+sstp = 100
 w_list = [2.5]
-z_max_list = [1200] #1000 for w=0.2
+z_max_list = [2000] #1000 for w=0.2
 sd_conc = 100
 outfile = f"test_WBF.nc"
 
@@ -43,7 +43,7 @@ def run_scheme(mixing, adaptive, aerosol, w_max, z_max):
     args = dict(
         p_0=100000,
         RH_0=0.8,
-        T_0=280,
+        T_0=250,
         aerosol = aerosol,
         #dry_sizes = monodisperse,
         sd_conc=sd_conc,
