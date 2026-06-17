@@ -13,9 +13,9 @@ import matplotlib.pyplot as plt
 from libcloudphxx import common
 plt.rcParams.update({'font.size': 16})
 
-timesteps = [1, 3, 10]
+timesteps = [1, 2, 4]
 w_list = [0.25, 1., 4.]
-z_max_list = [2000]
+z_max_list = [6000]
 sd_conc = 100
 outfile = f"test_WBF.nc"
 
@@ -125,22 +125,22 @@ def make_figure(aerosol, w_max, z_max):
             ax[i,1].plot(act_conc, z, color=c, label=l, linestyle=s, linewidth = lw)
             ax[i,2].plot(act_r, z, color=c, linestyle=s, linewidth = lw)
             ax[i,3].plot(std_dev_liq, z, color=c, label=l, linestyle=s, linewidth = lw)
-    
+
         ax[i,0].set_ylabel('z [km]')
-        ax[i,0].set_xlabel('liquid mixing ratio [g/kg]')
-        ax[i,1].set_xlabel('cloud droplet concentration [1/mg]')
-        ax[i,2].set_xlabel(f'cloud droplet mean radius [$\mu$m]')
-        ax[i,3].set_xlabel(f'cloud droplet std. dev. [$\mu$m]')
+    ax[-1,0].set_xlabel('liquid mix. ratio [g/kg]')
+    ax[-1,1].set_xlabel('droplet concentration [1/mg]')
+    ax[-1,2].set_xlabel(f'droplet mean radius [$\mu$m]')
+    ax[-1,3].set_xlabel(f'std. dev. of droplet radius [$\mu$m]')
 
     handles, labels = ax[0,0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="center right", bbox_to_anchor=(0.8, 0.97))
     fig.tight_layout(rect=[0, 0, 1, 0.95])
 
-    time_steps = ["dt = 1 s", "dt = 3 s", "dt = 10 s"]
-    for row_idx, label in enumerate(time_steps):
+    dt_labels = ["dt = " + str(dt) + " s" for dt in timesteps]
+    for row_idx, label in enumerate(dt_labels):
         axis = ax[row_idx, 0]
         axis.text(0.05, 0.95, label, transform=axis.transAxes, 
-                fontsize=16, fontweight='bold', va='top', ha='left',
+                fontsize=18, fontweight='bold', va='top', ha='left',
                 bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
 
     if aerosol == pristine:
@@ -158,4 +158,4 @@ def make_figure(aerosol, w_max, z_max):
 for w_max,z_max in zip(w_list, z_max_list):
     for aerosol in aerosol_list:
         make_figure(aerosol, w_max, z_max)
-plt.show()
+#plt.show()
