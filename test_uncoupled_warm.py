@@ -14,8 +14,8 @@ from libcloudphxx import common
 plt.rcParams.update({'font.size': 16})
 
 timesteps = [1, 2, 4]
-w_list = [0.25, 1., 4.]
-z_max_list = [6000]
+w_list = [4., 1., 0.25]
+z_max_list = [3000, 3000, 3000]
 sd_conc = 100
 outfile = f"test_WBF.nc"
 
@@ -33,7 +33,7 @@ monodisperse = {
     }
 }
 
-aerosol_list = [pristine, polluted]
+aerosol_list = [monomod]
 
 
 def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max):
@@ -73,28 +73,22 @@ def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max):
         rv = np.array(f.variables['r_v'][:]).squeeze()
         RH = np.array(f.variables['RH'][:]).squeeze()
         th = np.array(f.variables['th_d'][:]).squeeze()
+        liq_m0 = np.array(f.variables['liq_m0'][:]).squeeze()
+        liq_m1 = np.array(f.variables['liq_m1'][:]).squeeze()
+        liq_m2 = np.array(f.variables['liq_m2'][:]).squeeze()
         act_m0 = np.array(f.variables['act_m0'][:]).squeeze()
         act_m1 = np.array(f.variables['act_m1'][:]).squeeze()
         act_m2 = np.array(f.variables['act_m2'][:]).squeeze()
-        ice_m0 = np.array(f.variables['ice_m0'][:]).squeeze()
-        ice_m1 = np.array(f.variables['ice_m1'][:]).squeeze()
-        ice_m2 = np.array(f.variables['ice_m2'][:]).squeeze()
-        ice_mix_ratio = np.array(f.variables['ice_mix_ratio'][:]).squeeze()
         liq_mix_ratio = np.array(f.variables['liq_m3'][:]).squeeze() * 4/3 * np.pi * common.rho_w
-        ice_conc = np.array(f.variables['ice_m0'][:]).squeeze()  # 1/kg
+        liq_conc = np.array(f.variables['liq_m0'][:]).squeeze()
         act_conc = np.array(f.variables['act_m0'][:]).squeeze()
-        ice_r = np.where(ice_conc > 0, np.array(f.variables['ice_m1'][:]).squeeze() / np.array(f.variables['ice_m0'][:]).squeeze(), 0)
         act_r = np.where(act_conc > 0, np.array(f.variables['act_m1'][:]).squeeze() / np.array(f.variables['act_m0'][:]).squeeze(), 0)
         std_dev_liq = np.sqrt(np.where(act_m0 > 0, 
                            act_m2 / act_m0 - (act_m1 / act_m0)**2, 
                            0))
-        std_dev_ice = np.sqrt(np.where(ice_m0 > 0, 
-                           ice_m2 / ice_m0 - (ice_m1 / ice_m0)**2, 
-                           0))
         sd_conc_liq = np.array(f.variables['sd_conc_liq'][:]).squeeze()
-        sd_conc_ice = np.array(f.variables['sd_conc_ice'][:]).squeeze()
     os.remove(outfile)
-    return z/1000, rv*1e3, RH, th, ice_mix_ratio*1e3, liq_mix_ratio*1e3, ice_conc/1e6, act_conc/1e6, ice_r*1e6, act_r*1e6, std_dev_liq*1e6, std_dev_ice*1e6,
+    return z/1000, rv*1e3, RH, th, liq_mix_ratio*1e3, act_conc/1e6, act_r*1e6, std_dev_liq*1e6, sd_conc_liq
 
 
 
@@ -119,11 +113,11 @@ def make_figure(aerosol, w_max, z_max):
                 c = 'violet'
                 s = ':'
 
-            z, rv, RH, th, ice_mix_ratio, liq_mix_ratio, ice_conc, act_conc, ice_r, act_r, std_dev_liq, std_dev_ice = run_scheme(mixing, dt, sstp, aerosol, w_max, z_max)
-
+            z, rv, RH, th, liq_mix_ratio, act_conc, liq_r, std_dev_liq, sd_conc_liq = run_scheme(mixing, dt, sstp, aerosol, w_max, z_max)
+            #print(sd_conc_liq)
             ax[i,0].plot(liq_mix_ratio, z, color=c, label=l, linestyle=s, linewidth = lw)
             ax[i,1].plot(act_conc, z, color=c, label=l, linestyle=s, linewidth = lw)
-            ax[i,2].plot(act_r, z, color=c, linestyle=s, linewidth = lw)
+            ax[i,2].plot(liq_r, z, color=c, linestyle=s, linewidth = lw)
             ax[i,3].plot(std_dev_liq, z, color=c, label=l, linestyle=s, linewidth = lw)
 
         ax[i,0].set_ylabel('z [km]')
