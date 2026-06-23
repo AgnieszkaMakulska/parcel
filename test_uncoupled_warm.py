@@ -17,7 +17,8 @@ timesteps = [1]
 w_list = [0.25]
 z_max_list = [2000]
 sd_conc = 100
-outfile = f"test_WBF.nc"
+z1 = 200
+z2 = 900
 
 polluted = '{"polluted": {"kappa": 1.28, "rd_insol" : 0.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}'
 
@@ -28,7 +29,7 @@ pristine = '{"pristine": {"kappa": 1.28, "rd_insol": 0.0, "mean_r": [0.011e-6, 0
 aerosol_list = [polluted]
 
 
-def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max):
+def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max, outfile):
     args = dict(
         p_0=90000,
         RH_0=0.97,
@@ -44,7 +45,7 @@ def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max):
         outfreq=1,
         scheme="lgrngn",
         out_bin='{"liq": {"rght": 1, "moms": [0,1,2,3], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-20},' \
-                '"ice": {"rght": 1, "moms": [0,1,2,3], "drwt": "ice_a", "nbin": 1, "lnli": "lin", "left": 0.5e-20}}',
+                '"size_distr": {"rght": 2.5e-05, "moms": [0], "drwt": "wet", "nbin": 49, "lnli": "lin", "left": 5e-07}}',
         sstp_cond = sstp,
         adaptive_sstp_cond = False,
         sstp_cond_mix   = mixing,
@@ -56,44 +57,45 @@ def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max):
         time_dep_ice_nucl = True,
         depo = False
     )
-
-    
     parcel(**args)
 
+def read_profiles(outfile):
     with netcdf.netcdf_file(outfile, 'r') as f:
         z = np.array(f.variables['z'][:]).squeeze()
-        rv = np.array(f.variables['r_v'][:]).squeeze()
-        RH = np.array(f.variables['RH'][:]).squeeze()
-        th = np.array(f.variables['th_d'][:]).squeeze()
-        liq_m0 = np.array(f.variables['liq_m0'][:]).squeeze()
-        liq_m1 = np.array(f.variables['liq_m1'][:]).squeeze()
-        liq_m2 = np.array(f.variables['liq_m2'][:]).squeeze()
         act_m0 = np.array(f.variables['act_m0'][:]).squeeze()
         act_m1 = np.array(f.variables['act_m1'][:]).squeeze()
         act_m2 = np.array(f.variables['act_m2'][:]).squeeze()
         liq_mix_ratio = np.array(f.variables['liq_m3'][:]).squeeze() * 4/3 * np.pi * common.rho_w
-        liq_conc = np.array(f.variables['liq_m0'][:]).squeeze()
         act_conc = np.array(f.variables['act_m0'][:]).squeeze()
         act_r = np.where(act_conc > 0, np.array(f.variables['act_m1'][:]).squeeze() / np.array(f.variables['act_m0'][:]).squeeze(), 0)
         std_dev_liq = np.sqrt(np.where(act_m0 > 0, 
-                           act_m2 / act_m0 - (act_m1 / act_m0)**2, 
-                           0))
+                        act_m2 / act_m0 - (act_m1 / act_m0)**2, 
+                        0))
         rel_disp = np.where(act_r > 0, std_dev_liq / act_r, 0)
-    os.remove(outfile)
-    return z/1000, rv*1e3, RH, th, liq_mix_ratio*1e3, act_conc/1e6, act_r*1e6, std_dev_liq*1e6, rel_disp
+    return z/1000, liq_mix_ratio*1e3, act_conc/1e6, act_r*1e6, std_dev_liq*1e6, rel_disp
+
+def read_distr(outfile):
+    with netcdf.netcdf_file(outfile, 'r') as f:
+        z = np.array(f.variables['z'][:]).squeeze()
+        distr = np.array(f.variables['size_distr_m0'][:]).squeeze()
+        radii = np.array(f.variables['size_distr_r_wet'][:]).squeeze()
+        distr1 = distr[np.argmin(np.abs(z - z1))]
+        distr2 = distr[np.argmin(np.abs(z - z2))]
+    return distr1/1e6, distr2/1e6, radii*1e6
 
 
+def make_figures(aerosol, w_max, z_max):
 
-def make_figure(aerosol, w_max, z_max):
-
+    # plotting profiles
     fig, ax = plt.subplots(len(timesteps), 4, figsize=(16.0, 15.0), sharey=True, squeeze=False)
 
     for i in range(len(timesteps)):
-
         dt = timesteps[i]
         sstp = 10 * dt
-    
         for mixing in [True, False]:
+            outfile = "mixing_"+str(mixing)+"_dt_"+str(dt)+".nc"
+            run_scheme(mixing, dt, sstp, aerosol, w_max, z_max, outfile)
+            z, liq_mix_ratio, act_conc, act_r, std_dev_liq, rel_disp = read_profiles(outfile)
 
             lw = 2
             if mixing:
@@ -104,12 +106,10 @@ def make_figure(aerosol, w_max, z_max):
                 l = 'uncoupled'
                 c = 'violet'
                 s = ':'
-
-            z, rv, RH, th, liq_mix_ratio, act_conc, liq_r, std_dev_liq, rel_disp = run_scheme(mixing, dt, sstp, aerosol, w_max, z_max)
             #ax[i,0].plot(liq_mix_ratio, z, color=c, label=l, linestyle=s, linewidth = lw)
             ax[i,0].plot(rel_disp, z, color=c, label=l, linestyle=s, linewidth = lw)
             ax[i,1].plot(act_conc, z, color=c, label=l, linestyle=s, linewidth = lw)
-            ax[i,2].plot(liq_r, z, color=c, linestyle=s, linewidth = lw)
+            ax[i,2].plot(act_r, z, color=c, linestyle=s, linewidth = lw)
             ax[i,3].plot(std_dev_liq, z, color=c, label=l, linestyle=s, linewidth = lw)
 
         ax[i,0].set_ylabel('z [km]')
@@ -136,13 +136,37 @@ def make_figure(aerosol, w_max, z_max):
         aerosol_str = "polluted"
     else:
         aerosol_str = "monomodal"
-    out_png = "plots/outputs/coupled_uncoupled/"+aerosol_str+"_w_"+str(w_max)+".pdf"
+    out_png = "plots/outputs/coupled_uncoupled/"+aerosol_str+"_w_"+str(w_max)
     plt.suptitle('w = '+str(w_max)+' m/s, '+ aerosol_str)
-    plt.savefig(out_png, dpi=200)
+    plt.savefig(out_png + ".pdf", dpi=200)
 
-    return fig
+    # plotting size distribution
+    fig, ax = plt.subplots(len(timesteps), 2, figsize=(16.0, 7.0* len(timesteps)), sharey=True, squeeze=False)
+    for i in range(len(timesteps)):
+        dt = timesteps[i]
+        for mixing in [True, False]:
+            outfile = "mixing_"+str(mixing)+"_dt_"+str(dt)+".nc"
+            distr1, distr2, radii = read_distr(outfile)
+            l = "coupled" if mixing else "uncoupled"
+            ax[i, 0].bar(radii, distr1, width=radii[1]-radii[0], alpha=0.6, label = l)
+            ax[i, 1].bar(radii, distr2, width=radii[1]-radii[0], alpha=0.6, label = l)
+        ax[i,0].set_title(f'z = '+str(z1)+' m')
+        ax[i,1].set_title(f'z = '+str(z2)+' m')
+        ax[i, 0].set_ylabel('droplet concentration [1/mg]')        
+    ax[-1,0].set_xlabel(f'droplet radius [$\mu$m]')
+    ax[-1,1].set_xlabel(f'droplet radius [$\mu$m]')
+    ax[0, 0].legend()
+
+    dt_labels = ["dt = " + str(dt) + " s" for dt in timesteps]
+    for row_idx, label in enumerate(dt_labels):
+        axis = ax[row_idx, 0]
+        axis.text(0.05, 0.95, label, transform=axis.transAxes, 
+                fontsize=18, fontweight='bold', va='top', ha='left',
+                bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
+        
+    plt.suptitle('w = '+str(w_max)+' m/s, '+ aerosol_str)
+    plt.savefig(out_png + "_distr.pdf", dpi=200)
 
 for w_max,z_max in zip(w_list, z_max_list):
     for aerosol in aerosol_list:
-        make_figure(aerosol, w_max, z_max)
-#plt.show()
+        make_figures(aerosol, w_max, z_max)
