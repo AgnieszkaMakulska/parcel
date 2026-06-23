@@ -13,34 +13,26 @@ import matplotlib.pyplot as plt
 from libcloudphxx import common
 plt.rcParams.update({'font.size': 16})
 
-timesteps = [1, 2, 4]
-w_list = [4., 1., 0.25]
-z_max_list = [3000, 3000, 3000]
+timesteps = [1]
+w_list = [0.25]
+z_max_list = [2000]
 sd_conc = 100
 outfile = f"test_WBF.nc"
 
-polluted = '{"polluted": {"kappa": 0.61, "rd_insol" : 0.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}'
+polluted = '{"polluted": {"kappa": 1.28, "rd_insol" : 0.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}'
 
-pristine = '{"pristine": {"kappa": 0.61, "rd_insol": 0.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}'
+pristine = '{"pristine": {"kappa": 1.28, "rd_insol": 0.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}'
 
-monomod = '{"monomodal": {"kappa": 0.61, "rd_insol": 0.0, "mean_r": [0.011e-6], "gstdev": [1.2], "n_tot": [125.0e6]}}'
+#monomod = '{"monomodal": {"kappa": 1.28, "rd_insol": 0.0, "mean_r": [0.04e-6], "gstdev": [2.2], "n_tot": [1000.0e6]}}'
 
-monodisperse = {
-    "ammonium_sulfate": {
-        "kappa": 0.61, 
-        "rd_insol": 0.0, 
-        "bins": {1e-6: [30.0, 15]}
-    }
-}
-
-aerosol_list = [monomod]
+aerosol_list = [polluted]
 
 
 def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max):
     args = dict(
-        p_0=100000,
-        RH_0=0.8,
-        T_0=280,
+        p_0=90000,
+        RH_0=0.97,
+        T_0=283,
         aerosol = aerosol,
         #dry_sizes = monodisperse,
         sd_conc=sd_conc,
@@ -86,15 +78,15 @@ def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max):
         std_dev_liq = np.sqrt(np.where(act_m0 > 0, 
                            act_m2 / act_m0 - (act_m1 / act_m0)**2, 
                            0))
-        sd_conc_liq = np.array(f.variables['sd_conc_liq'][:]).squeeze()
+        rel_disp = np.where(act_r > 0, std_dev_liq / act_r, 0)
     os.remove(outfile)
-    return z/1000, rv*1e3, RH, th, liq_mix_ratio*1e3, act_conc/1e6, act_r*1e6, std_dev_liq*1e6, sd_conc_liq
+    return z/1000, rv*1e3, RH, th, liq_mix_ratio*1e3, act_conc/1e6, act_r*1e6, std_dev_liq*1e6, rel_disp
 
 
 
 def make_figure(aerosol, w_max, z_max):
 
-    fig, ax = plt.subplots(len(timesteps), 4, figsize=(16.0, 15.0), sharey=True, squeeze=True)
+    fig, ax = plt.subplots(len(timesteps), 4, figsize=(16.0, 15.0), sharey=True, squeeze=False)
 
     for i in range(len(timesteps)):
 
@@ -113,15 +105,16 @@ def make_figure(aerosol, w_max, z_max):
                 c = 'violet'
                 s = ':'
 
-            z, rv, RH, th, liq_mix_ratio, act_conc, liq_r, std_dev_liq, sd_conc_liq = run_scheme(mixing, dt, sstp, aerosol, w_max, z_max)
-            #print(sd_conc_liq)
-            ax[i,0].plot(liq_mix_ratio, z, color=c, label=l, linestyle=s, linewidth = lw)
+            z, rv, RH, th, liq_mix_ratio, act_conc, liq_r, std_dev_liq, rel_disp = run_scheme(mixing, dt, sstp, aerosol, w_max, z_max)
+            #ax[i,0].plot(liq_mix_ratio, z, color=c, label=l, linestyle=s, linewidth = lw)
+            ax[i,0].plot(rel_disp, z, color=c, label=l, linestyle=s, linewidth = lw)
             ax[i,1].plot(act_conc, z, color=c, label=l, linestyle=s, linewidth = lw)
             ax[i,2].plot(liq_r, z, color=c, linestyle=s, linewidth = lw)
             ax[i,3].plot(std_dev_liq, z, color=c, label=l, linestyle=s, linewidth = lw)
 
         ax[i,0].set_ylabel('z [km]')
-    ax[-1,0].set_xlabel('liquid mix. ratio [g/kg]')
+    ax[-1,0].set_xlabel('rel. dispersion')
+    #ax[-1,0].set_xlabel('liquid mix. ratio [g/kg]')
     ax[-1,1].set_xlabel('droplet concentration [1/mg]')
     ax[-1,2].set_xlabel(f'droplet mean radius [$\mu$m]')
     ax[-1,3].set_xlabel(f'std. dev. of droplet radius [$\mu$m]')
