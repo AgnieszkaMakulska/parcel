@@ -2,7 +2,7 @@
 Checking if mixing between substeps is important
 """
 
-import sys, os
+import sys
 sys.path.insert(0, "../")
 sys.path.insert(0, "./")
 
@@ -16,9 +16,8 @@ plt.rcParams.update({'font.size': 16})
 timesteps = [1]
 w_list = [0.25]
 z_max_list = [2000]
-sd_conc = 100
-z1 = 200
-z2 = 900
+z1 = 300
+z2 = 1200
 
 polluted = '{"polluted": {"kappa": 1.28, "rd_insol" : 0.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}'
 
@@ -36,7 +35,7 @@ def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max, outfile):
         T_0=283,
         aerosol = aerosol,
         #dry_sizes = monodisperse,
-        sd_conc=sd_conc,
+        sd_conc=100,
         dt=dt,
         z_max=None,
         w = lambda t: w_max if t <= z_max/w_max else -w_max,
@@ -45,7 +44,7 @@ def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max, outfile):
         outfreq=1,
         scheme="lgrngn",
         out_bin='{"liq": {"rght": 1, "moms": [0,1,2,3], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-20},' \
-                '"size_distr": {"rght": 2.5e-05, "moms": [0], "drwt": "wet", "nbin": 49, "lnli": "lin", "left": 5e-07}}',
+                '"size_distr": {"rght": 15e-6, "moms": [0], "drwt": "wet", "nbin": 50, "lnli": "lin", "left": 5e-6}}',
         sstp_cond = sstp,
         adaptive_sstp_cond = False,
         sstp_cond_mix   = mixing,
@@ -58,6 +57,16 @@ def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max, outfile):
         depo = False
     )
     parcel(**args)
+
+
+def run(aerosol, w_max, z_max):
+    for i in range(len(timesteps)):
+        dt = timesteps[i]
+        sstp = 10 * dt
+        for mixing in [True, False]:
+            outfile = "mixing_"+str(mixing)+"_dt_"+str(dt)+".nc"
+            run_scheme(mixing, dt, sstp, aerosol, w_max, z_max, outfile)
+
 
 def read_profiles(outfile):
     with netcdf.netcdf_file(outfile, 'r') as f:
@@ -83,18 +92,24 @@ def read_distr(outfile):
         distr2 = distr[np.argmin(np.abs(z - z2))]
     return distr1/1e6, distr2/1e6, radii*1e6
 
+    
 
-def make_figures(aerosol, w_max, z_max):
+def make_figures(aerosol, w_max):
+
+    if aerosol == pristine:
+        aerosol_str = "pristine"
+    elif aerosol == polluted:
+        aerosol_str = "polluted"
+    else:
+        aerosol_str = "monomodal"
+    out_png = "plots/outputs/coupled_uncoupled/"+aerosol_str+"_w_"+str(w_max)
 
     # plotting profiles
     fig, ax = plt.subplots(len(timesteps), 4, figsize=(16.0, 15.0), sharey=True, squeeze=False)
-
     for i in range(len(timesteps)):
         dt = timesteps[i]
-        sstp = 10 * dt
         for mixing in [True, False]:
             outfile = "mixing_"+str(mixing)+"_dt_"+str(dt)+".nc"
-            run_scheme(mixing, dt, sstp, aerosol, w_max, z_max, outfile)
             z, liq_mix_ratio, act_conc, act_r, std_dev_liq, rel_disp = read_profiles(outfile)
 
             lw = 2
@@ -113,7 +128,7 @@ def make_figures(aerosol, w_max, z_max):
             ax[i,3].plot(std_dev_liq, z, color=c, label=l, linestyle=s, linewidth = lw)
 
         ax[i,0].set_ylabel('z [km]')
-    ax[-1,0].set_xlabel('rel. dispersion')
+    ax[-1,0].set_xlabel('rel. disp. of droplet radius')
     #ax[-1,0].set_xlabel('liquid mix. ratio [g/kg]')
     ax[-1,1].set_xlabel('droplet concentration [1/mg]')
     ax[-1,2].set_xlabel(f'droplet mean radius [$\mu$m]')
@@ -129,14 +144,6 @@ def make_figures(aerosol, w_max, z_max):
         axis.text(0.05, 0.95, label, transform=axis.transAxes, 
                 fontsize=18, fontweight='bold', va='top', ha='left',
                 bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
-
-    if aerosol == pristine:
-        aerosol_str = "pristine"
-    elif aerosol == polluted:
-        aerosol_str = "polluted"
-    else:
-        aerosol_str = "monomodal"
-    out_png = "plots/outputs/coupled_uncoupled/"+aerosol_str+"_w_"+str(w_max)
     plt.suptitle('w = '+str(w_max)+' m/s, '+ aerosol_str)
     plt.savefig(out_png + ".pdf", dpi=200)
 
@@ -148,10 +155,13 @@ def make_figures(aerosol, w_max, z_max):
             outfile = "mixing_"+str(mixing)+"_dt_"+str(dt)+".nc"
             distr1, distr2, radii = read_distr(outfile)
             l = "coupled" if mixing else "uncoupled"
-            ax[i, 0].bar(radii, distr1, width=radii[1]-radii[0], alpha=0.6, label = l)
-            ax[i, 1].bar(radii, distr2, width=radii[1]-radii[0], alpha=0.6, label = l)
+            c = "tab:blue" if mixing else "tab:orange"
+            ax[i, 0].bar(radii, distr1, color=c, edgecolor=c, width=radii[1]-radii[0], alpha=0.4, label = l, linewidth=2)
+            ax[i, 1].bar(radii, distr2, color=c, edgecolor=c, width=radii[1]-radii[0], alpha=0.4, label = l, linewidth=2)
         ax[i,0].set_title(f'z = '+str(z1)+' m')
         ax[i,1].set_title(f'z = '+str(z2)+' m')
+        ax[i,0].set_xlim(5, 10)
+        ax[i,1].set_xlim(10,15)
         ax[i, 0].set_ylabel('droplet concentration [1/mg]')        
     ax[-1,0].set_xlabel(f'droplet radius [$\mu$m]')
     ax[-1,1].set_xlabel(f'droplet radius [$\mu$m]')
@@ -163,10 +173,10 @@ def make_figures(aerosol, w_max, z_max):
         axis.text(0.05, 0.95, label, transform=axis.transAxes, 
                 fontsize=18, fontweight='bold', va='top', ha='left',
                 bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
-        
     plt.suptitle('w = '+str(w_max)+' m/s, '+ aerosol_str)
     plt.savefig(out_png + "_distr.pdf", dpi=200)
 
 for w_max,z_max in zip(w_list, z_max_list):
     for aerosol in aerosol_list:
-        make_figures(aerosol, w_max, z_max)
+        #run(aerosol, w_max, z_max)
+        make_figures(aerosol, w_max)
