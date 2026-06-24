@@ -12,11 +12,12 @@ from scipy.io import netcdf
 import matplotlib.pyplot as plt
 from libcloudphxx import common
 plt.rcParams.update({'font.size': 16})
+from matplotlib.ticker import LogLocator, FuncFormatter, NullFormatter
 
 timesteps = [1]
 w_list = [0.25]
-z_max_list = [2000]
-z1 = 300
+z_max_list = [1500]
+z1 = 900
 z2 = 1200
 
 polluted = '{"polluted": {"kappa": 1.28, "rd_insol" : 0.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}'
@@ -35,7 +36,7 @@ def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max, outfile):
         T_0=283,
         aerosol = aerosol,
         #dry_sizes = monodisperse,
-        sd_conc=100,
+        sd_conc=1000,
         dt=dt,
         z_max=None,
         w = lambda t: w_max if t <= z_max/w_max else -w_max,
@@ -44,7 +45,7 @@ def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max, outfile):
         outfreq=1,
         scheme="lgrngn",
         out_bin='{"liq": {"rght": 1, "moms": [0,1,2,3], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-20},' \
-                '"size_distr": {"rght": 15e-6, "moms": [0], "drwt": "wet", "nbin": 50, "lnli": "lin", "left": 5e-6}}',
+                '"size_distr": {"rght": 20e-6, "moms": [0], "drwt": "wet", "nbin": 100, "lnli": "log", "left": 0.1e-6}}',
         sstp_cond = sstp,
         adaptive_sstp_cond = False,
         sstp_cond_mix   = mixing,
@@ -88,9 +89,10 @@ def read_distr(outfile):
         z = np.array(f.variables['z'][:]).squeeze()
         distr = np.array(f.variables['size_distr_m0'][:]).squeeze()
         radii = np.array(f.variables['size_distr_r_wet'][:]).squeeze()
+        bin_widths = np.array(f.variables['size_distr_dr_wet'][:]).squeeze()
         distr1 = distr[np.argmin(np.abs(z - z1))]
         distr2 = distr[np.argmin(np.abs(z - z2))]
-    return distr1/1e6, distr2/1e6, radii*1e6
+    return distr1/1e6, distr2/1e6, radii*1e6, bin_widths*1e6
 
     
 
@@ -153,19 +155,32 @@ def make_figures(aerosol, w_max):
         dt = timesteps[i]
         for mixing in [True, False]:
             outfile = "mixing_"+str(mixing)+"_dt_"+str(dt)+".nc"
-            distr1, distr2, radii = read_distr(outfile)
+            distr1, distr2, radii, bin_widths = read_distr(outfile)
             l = "coupled" if mixing else "uncoupled"
             c = "tab:blue" if mixing else "tab:orange"
-            ax[i, 0].bar(radii, distr1, color=c, edgecolor=c, width=radii[1]-radii[0], alpha=0.4, label = l, linewidth=2)
-            ax[i, 1].bar(radii, distr2, color=c, edgecolor=c, width=radii[1]-radii[0], alpha=0.4, label = l, linewidth=2)
+            ax[i, 0].bar(radii, distr1, color=c, edgecolor=c, width=bin_widths, alpha=0.4, label = l, linewidth=2)
+            ax[i, 1].bar(radii, distr2, color=c, edgecolor=c, width=bin_widths, alpha=0.4, label = l, linewidth=2)
         ax[i,0].set_title(f'z = '+str(z1)+' m')
         ax[i,1].set_title(f'z = '+str(z2)+' m')
-        ax[i,0].set_xlim(5, 10)
-        ax[i,1].set_xlim(10,15)
+        ax[i,0].set_xlim(2,20)
+        ax[i,1].set_xlim(2,20)
+        ax[i,0].set_xscale('log')
+        ax[i,1].set_xscale('log')
+        ax[i,0].set_yscale('log')
+        ax[i,1].set_yscale('log')
         ax[i, 0].set_ylabel('droplet concentration [1/mg]')        
     ax[-1,0].set_xlabel(f'droplet radius [$\mu$m]')
     ax[-1,1].set_xlabel(f'droplet radius [$\mu$m]')
     ax[0, 0].legend()
+
+    for j in [0, 1]:
+        ax[i, j].xaxis.set_major_locator(
+            LogLocator(base=10, subs=[1,2,3,4,5,6,7,8,9])
+        )
+        ax[i, j].xaxis.set_major_formatter(
+            FuncFormatter(lambda x, _: f'{x:g}')
+        )
+        ax[i, j].xaxis.set_minor_formatter(NullFormatter())
 
     dt_labels = ["dt = " + str(dt) + " s" for dt in timesteps]
     for row_idx, label in enumerate(dt_labels):
