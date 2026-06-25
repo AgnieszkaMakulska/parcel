@@ -11,8 +11,7 @@ def _micro_init(aerosol, opts, state):
   # lagrangian scheme options
   opts_init = lgrngn.opts_init_t()
   for opt in [
-    "dt", 
-    "sd_conc", 
+    "dt",
     "chem_rho", 
     "sstp_cond",
     "ice_switch",
@@ -31,6 +30,13 @@ def _micro_init(aerosol, opts, state):
   opts_init.n_sd_max = opts_init.sd_conc
   if opts["rng_seed"] is not None:
       opts_init.rng_seed = int(opts["rng_seed"])
+
+  if opts["sd_conc"] is not None and opts["sd_const_multi"] is not None:
+    raise ValueError("sd_conc and sd_const_multi can't both be defined")  
+  elif opts["sd_conc"] is not None:
+    opts_init.sd_conc = int(opts["sd_conc"])
+  elif opts["sd_const_multi"] is not None:
+    opts_init.sd_const_multi = int(opts["sd_const_multi"])
 
   opts_init.th_dry = True
   opts_init.const_p = False

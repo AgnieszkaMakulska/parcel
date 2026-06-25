@@ -35,6 +35,7 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
   time_dep_ice_nucl = False,
   depo = False,
   sd_conc = 64,
+  sd_const_multi = None,
   aerosol = '{"ammonium_sulfate": {"kappa": 0.61, "rd_insol": 0.0, "mean_r": [0.02e-6], "gstdev": [1.4], "n_tot": [60.0e6]}}',
   dry_sizes = None,
   out_bin = '{"radii": {"rght": 0.01, "moms": [0], "drwt": "wet", "nbin": 1, "lnli": "log", "left": 1e-15}}',
@@ -84,6 +85,7 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
     wait (Optional[float]):       number of timesteps to run parcel model with vertical velocity=0 at the end of simulation
                                   (added for testing)
     sd_conc (Optional[int]):      number of moving bins (super-droplets)
+    sd_const_multi (Optional[int]):  alternative to `sd_conc`: constant multiplicity for all SDs
 
     
     aerosol (Optional[json str]): dict of dicts defining aerosol distribution, e.g.:
