@@ -77,14 +77,18 @@ def read_profiles(outfile):
         act_m0 = np.array(f.variables['act_m0'][:]).squeeze()
         act_m1 = np.array(f.variables['act_m1'][:]).squeeze()
         act_m2 = np.array(f.variables['act_m2'][:]).squeeze()
+        act_m4 = np.array(f.variables['act_m4'][:]).squeeze()
         liq_mix_ratio = np.array(f.variables['liq_m3'][:]).squeeze() * 4/3 * np.pi * common.rho_w
         act_conc = np.array(f.variables['act_m0'][:]).squeeze()
         act_r = np.where(act_conc > 0, np.array(f.variables['act_m1'][:]).squeeze() / np.array(f.variables['act_m0'][:]).squeeze(), 0)
-        std_dev_liq = np.sqrt(np.where(act_m0 > 0, 
+        std_dev_radius = np.sqrt(np.where(act_m0 > 0, 
                         act_m2 / act_m0 - (act_m1 / act_m0)**2, 
                         0))
-        rel_disp = np.where(act_r > 0, std_dev_liq / act_r, 0)
-    return z/1000, liq_mix_ratio*1e3, act_conc/1e6, act_r*1e6, std_dev_liq*1e6, rel_disp
+        std_dev_area = np.sqrt(np.where(act_m0 > 0, 
+                        act_m4 / act_m0 - (act_m2 / act_m0)**2, 
+                        0))
+        rel_disp = np.where(act_r > 0, std_dev_radius / act_r, 0)
+    return z/1000, liq_mix_ratio*1e3, act_conc/1e6, act_r*1e6, std_dev_area*1e12, rel_disp
 
 def read_distr(outfile):
     with netcdf.netcdf_file(outfile, 'r') as f:
@@ -114,7 +118,7 @@ def make_figures(aerosol, w_max):
         dt = timesteps[i]
         for mixing in [True, False]:
             outfile = "mixing_"+str(mixing)+"_dt_"+str(dt)+".nc"
-            z, liq_mix_ratio, act_conc, act_r, std_dev_liq, rel_disp = read_profiles(outfile)
+            z, liq_mix_ratio, act_conc, act_r, std_dev_area, rel_disp = read_profiles(outfile)
 
             lw = 2
             if mixing:
@@ -129,14 +133,14 @@ def make_figures(aerosol, w_max):
             ax[i,0].plot(rel_disp, z, color=c, label=l, linestyle=s, linewidth = lw)
             ax[i,1].plot(act_conc, z, color=c, label=l, linestyle=s, linewidth = lw)
             ax[i,2].plot(act_r, z, color=c, linestyle=s, linewidth = lw)
-            ax[i,3].plot(std_dev_liq, z, color=c, label=l, linestyle=s, linewidth = lw)
+            ax[i,3].plot(std_dev_area, z, color=c, label=l, linestyle=s, linewidth = lw)
 
         ax[i,0].set_ylabel('z [km]')
     ax[-1,0].set_xlabel('rel. disp. of droplet radius')
     #ax[-1,0].set_xlabel('liquid mix. ratio [g/kg]')
     ax[-1,1].set_xlabel('droplet concentration [1/mg]')
     ax[-1,2].set_xlabel(f'droplet mean radius [$\mu$m]')
-    ax[-1,3].set_xlabel(f'std. dev. of droplet radius [$\mu$m]')
+    ax[-1,3].set_xlabel(f'std. dev. of droplet area [$\mu$m$^2$]')
 
     handles, labels = ax[0,0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="center right", bbox_to_anchor=(0.8, 0.97))
