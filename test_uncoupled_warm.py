@@ -17,8 +17,8 @@ from matplotlib.ticker import LogLocator, FuncFormatter, NullFormatter
 timesteps = [1]
 w_list = [0.25]
 z_max_list = [1500]
-z1 = 900
-z2 = 1200
+z1 = 200
+z2 = 500
 
 polluted = '{"polluted": {"kappa": 1.28, "rd_insol" : 0.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}'
 
@@ -88,7 +88,8 @@ def read_profiles(outfile):
                         act_m4 / act_m0 - (act_m2 / act_m0)**2, 
                         0))
         rel_disp = np.where(act_r > 0, std_dev_radius / act_r, 0)
-    return z/1000, liq_mix_ratio*1e3, act_conc/1e6, act_r*1e6, std_dev_area*1e12, rel_disp
+        sd_conc = np.array(f.variables['sd_conc'][:]).squeeze()
+    return z/1000, liq_mix_ratio*1e3, act_conc/1e6, act_r*1e6, std_dev_area*1e12, rel_disp, sd_conc
 
 def read_distr(outfile):
     with netcdf.netcdf_file(outfile, 'r') as f:
@@ -118,7 +119,8 @@ def make_figures(aerosol, w_max):
         dt = timesteps[i]
         for mixing in [True, False]:
             outfile = "mixing_"+str(mixing)+"_dt_"+str(dt)+".nc"
-            z, liq_mix_ratio, act_conc, act_r, std_dev_area, rel_disp = read_profiles(outfile)
+            z, liq_mix_ratio, act_conc, act_r, std_dev_area, rel_disp, sd_conc = read_profiles(outfile)
+            print(sd_conc)
 
             lw = 2
             if mixing:
