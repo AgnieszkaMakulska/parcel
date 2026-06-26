@@ -38,7 +38,7 @@ def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max, outfile):
         #dry_sizes = monodisperse,
         sd_conc=None,
         sd_const_multi=1,
-        n_sd_mac=1e20,
+        n_sd_max=1e20,
         dt=dt,
         z_max=None,
         w = lambda t: w_max if t <= z_max/w_max else -w_max,
