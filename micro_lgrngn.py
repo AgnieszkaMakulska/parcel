@@ -38,6 +38,9 @@ def _micro_init(aerosol, opts, state):
   elif opts["sd_const_multi"] is not None:
     opts_init.sd_const_multi = int(opts["sd_const_multi"])
 
+  if opts["n_sd_max"] is not None:
+    opts_init.n_sd_max = int(opts["n_sd_max"])
+
   opts_init.th_dry = True
   opts_init.const_p = False
 

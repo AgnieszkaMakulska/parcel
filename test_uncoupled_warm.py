@@ -36,7 +36,9 @@ def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max, outfile):
         T_0=283,
         aerosol = aerosol,
         #dry_sizes = monodisperse,
-        sd_conc=1000,
+        sd_conc=None,
+        sd_const_multi=1,
+        n_sd_mac=1e20,
         dt=dt,
         z_max=None,
         w = lambda t: w_max if t <= z_max/w_max else -w_max,
@@ -193,5 +195,5 @@ def make_figures(aerosol, w_max):
 
 for w_max,z_max in zip(w_list, z_max_list):
     for aerosol in aerosol_list:
-        #run(aerosol, w_max, z_max)
+        run(aerosol, w_max, z_max)
         make_figures(aerosol, w_max)
