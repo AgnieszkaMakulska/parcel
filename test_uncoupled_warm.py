@@ -38,7 +38,7 @@ def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max, outfile):
         #dry_sizes = monodisperse,
         sd_conc=None,
         sd_const_multi=1000,
-        n_sd_max=1e9,
+        n_sd_max=1e7,
         dt=dt,
         z_max=None,
         w = lambda t: w_max if t <= z_max/w_max else -w_max,
@@ -53,7 +53,7 @@ def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max, outfile):
         sstp_cond_mix   = mixing,
         exact_sstp_cond = True,
         aerosol_independent_of_rhod=True, 
-        backend="OpenMP",
+        backend="cuda",
         ice_switch = False,
         ice_nucl = False,
         time_dep_ice_nucl = True,
@@ -173,7 +173,7 @@ def make_figures(aerosol, w_max):
         ax[i, 0].set_ylabel('droplet concentration [1/mg]')        
     ax[-1,0].set_xlabel(f'droplet radius [$\mu$m]')
     ax[-1,1].set_xlabel(f'droplet radius [$\mu$m]')
-    ax[0, 0].legend()
+    ax[0, 1].legend()
 
     for j in [0, 1]:
         ax[i, j].xaxis.set_major_locator(
