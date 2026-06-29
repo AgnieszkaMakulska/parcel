@@ -29,7 +29,7 @@ pristine = '{"pristine": {"kappa": 1.28, "rd_insol": 0.0, "mean_r": [0.011e-6, 0
 aerosol_list = [polluted]
 
 
-def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max, outfile):
+def run_scheme(mixing, perparticle, dt, sstp, aerosol, w_max, z_max, outfile):
     args = dict(
         p_0=90000,
         RH_0=0.97,
@@ -51,7 +51,7 @@ def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max, outfile):
         sstp_cond = sstp,
         adaptive_sstp_cond = False,
         sstp_cond_mix   = mixing,
-        exact_sstp_cond = True,
+        exact_sstp_cond = perparticle,
         aerosol_independent_of_rhod=True, 
         backend="cuda",
         ice_switch = False,
@@ -66,9 +66,9 @@ def run(aerosol, w_max, z_max):
     for i in range(len(timesteps)):
         dt = timesteps[i]
         sstp = 10 * dt
-        for mixing in [True, False]:
-            outfile = "mixing_"+str(mixing)+"_dt_"+str(dt)+".nc"
-            run_scheme(mixing, dt, sstp, aerosol, w_max, z_max, outfile)
+        for (mixing, perparticle) in [(True,True), (False,True), (True,False)]:
+            outfile = "mixing_"+str(mixing)+"_perparticle_"+str(perparticle)+"_dt_"+str(dt)+".nc"
+            run_scheme(mixing, perparticle, dt, sstp, aerosol, w_max, z_max, outfile)
 
 
 def read_profiles(outfile):
@@ -117,8 +117,8 @@ def make_figures(aerosol, w_max):
     fig, ax = plt.subplots(len(timesteps), 4, figsize=(16.0, 15.0), sharey=True, squeeze=False)
     for i in range(len(timesteps)):
         dt = timesteps[i]
-        for mixing in [True, False]:
-            outfile = "mixing_"+str(mixing)+"_dt_"+str(dt)+".nc"
+        for (mixing, perparticle) in [(True,True), (False,True), (True,False)]:
+            outfile = "mixing_"+str(mixing)+"_perparticle_"+str(perparticle)+"_dt_"+str(dt)+".nc"
             z, liq_mix_ratio, act_conc, act_r, std_dev_area, rel_disp, sd_conc = read_profiles(outfile)
             print(sd_conc)
 
@@ -131,6 +131,10 @@ def make_figures(aerosol, w_max):
                 l = 'uncoupled'
                 c = 'violet'
                 s = ':'
+            if mixing and not perparticle:
+                l = 'per-cell'
+                c = 'orange'
+                s = '--'
             #ax[i,0].plot(liq_mix_ratio, z, color=c, label=l, linestyle=s, linewidth = lw)
             ax[i,0].plot(rel_disp, z, color=c, label=l, linestyle=s, linewidth = lw)
             ax[i,1].plot(act_conc, z, color=c, label=l, linestyle=s, linewidth = lw)
@@ -161,11 +165,14 @@ def make_figures(aerosol, w_max):
     fig, ax = plt.subplots(len(timesteps), 2, figsize=(16.0, 7.0* len(timesteps)), sharey=True, squeeze=False)
     for i in range(len(timesteps)):
         dt = timesteps[i]
-        for mixing in [True, False]:
-            outfile = "mixing_"+str(mixing)+"_dt_"+str(dt)+".nc"
+        for (mixing, perparticle) in [(True,True), (False,True), (True,False)]:
+            outfile = "mixing_"+str(mixing)+"_perparticle_"+str(perparticle)+"_dt_"+str(dt)+".nc"
             distr1, distr2, radii, bin_widths = read_distr(outfile)
             l = "coupled" if mixing else "uncoupled"
             c = "tab:blue" if mixing else "tab:orange"
+            if mixing and not perparticle:
+                l = "per-cell"
+                c = "violet"
             ax[i, 0].bar(radii, distr1, color=c, edgecolor=c, width=bin_widths, alpha=0.4, label = l, linewidth=2)
             ax[i, 1].bar(radii, distr2, color=c, edgecolor=c, width=bin_widths, alpha=0.4, label = l, linewidth=2)
         ax[i,0].set_title(f'z = '+str(z1)+' m')
