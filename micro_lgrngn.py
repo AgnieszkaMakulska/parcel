@@ -27,6 +27,8 @@ def _micro_init(aerosol, opts, state):
     if opt in opts and opts[opt] is not None:
       setattr(opts_init, opt, opts[opt])
 
+  opts_init.RH_formula = lgrngn.RH_formula_t.rv_cc
+
   opts_init.n_sd_max = opts_init.sd_conc
   if opts["rng_seed"] is not None:
       opts_init.rng_seed = int(opts["rng_seed"])
