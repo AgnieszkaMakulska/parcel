@@ -17,8 +17,8 @@ from matplotlib.ticker import LogLocator, FuncFormatter, NullFormatter
 timesteps = [1]
 w_list = [0.25]
 z_max_list = [1500]
-z1 = 200
-z2 = 500
+z1 = 900
+z2 = 1200
 
 polluted = '{"polluted": {"kappa": 1.28, "rd_insol" : 0.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}'
 
@@ -37,7 +37,7 @@ def run_scheme(mixing, dt, sstp, aerosol, w_max, z_max, outfile):
         aerosol = aerosol,
         #dry_sizes = monodisperse,
         sd_conc=None,
-        sd_const_multi=1000,
+        sd_const_multi=100,
         n_sd_max=1e7,
         dt=dt,
         z_max=None,
