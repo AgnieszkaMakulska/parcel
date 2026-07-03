@@ -16,7 +16,7 @@ from matplotlib.ticker import LogLocator, FuncFormatter, NullFormatter
 
 timesteps = [1]
 w_list = [0.25]
-z_max_list = [1500]
+z_max_list = [10]
 z1 = 900
 z2 = 1200
 
@@ -37,7 +37,7 @@ def run_scheme(mixing, perparticle, dt, sstp, aerosol, w_max, z_max, outfile):
         aerosol = aerosol,
         #dry_sizes = monodisperse,
         sd_conc=None,
-        sd_const_multi=100,
+        sd_const_multi=1000000,
         n_sd_max=1e7,
         dt=dt,
         z_max=None,
@@ -53,11 +53,12 @@ def run_scheme(mixing, perparticle, dt, sstp, aerosol, w_max, z_max, outfile):
         sstp_cond_mix   = mixing,
         exact_sstp_cond = perparticle,
         aerosol_independent_of_rhod=True, 
-        backend="cuda",
+        backend="OpenMP",
         ice_switch = False,
         ice_nucl = False,
         time_dep_ice_nucl = True,
-        depo = False
+        depo = False,
+        const_p = True
     )
     parcel(**args)
 
@@ -74,6 +75,7 @@ def run(aerosol, w_max, z_max):
 def read_profiles(outfile):
     with netcdf.netcdf_file(outfile, 'r') as f:
         z = np.array(f.variables['z'][:]).squeeze()
+        p = np.array(f.variables['p'][:]).squeeze()
         act_m0 = np.array(f.variables['act_m0'][:]).squeeze()
         act_m1 = np.array(f.variables['act_m1'][:]).squeeze()
         act_m2 = np.array(f.variables['act_m2'][:]).squeeze()
@@ -89,6 +91,7 @@ def read_profiles(outfile):
                         0))
         rel_disp = np.where(act_r > 0, std_dev_radius / act_r, 0)
         sd_conc = np.array(f.variables['sd_conc'][:]).squeeze()
+        print(p)
     return z/1000, liq_mix_ratio*1e3, act_conc/1e6, act_r*1e6, std_dev_area*1e12, rel_disp, sd_conc
 
 def read_distr(outfile):

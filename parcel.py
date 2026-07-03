@@ -28,6 +28,7 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
   r_0 = -1., RH_0 = -1.,
   outfile = "test.nc",
   pprof = "pprof_piecewise_const_rhod", 
+  const_p = False,
   outfreq = 100,
   scheme = "lgrngn", # microphysics scheme: lgrngn, blk_1m
   ice_switch = False,
@@ -83,6 +84,7 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
     pprof   (Optional[string]):   method to calculate pressure profile used to calculate
                                   dry air density that is used by the super-droplet scheme
                                   valid options are: pprof_const_th_rv, pprof_const_rhod, pprof_piecewise_const_rhod
+    const_p  (Optional[bool])     if True, pressure equals supplied profile; if False, pressure from gas equation                         
     wait (Optional[float]):       number of timesteps to run parcel model with vertical velocity=0 at the end of simulation
                                   (added for testing)
     sd_conc (Optional[int]):      number of moving bins (super-droplets)
@@ -310,6 +312,9 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
         state["t"] = it * dt
 
         # pressure
+
+        if const_p == True:
+          pass
         if pprof == "pprof_const_th_rv":
           # as in icicle model
           p_hydro = _p_hydro_const_th_rv(state["z"], p_0, th_0, r_0)

@@ -22,7 +22,8 @@ def _micro_init(aerosol, opts, state):
     "sstp_cond_act",
     "sstp_cond_mix",
     "exact_sstp_cond",
-    "aerosol_independent_of_rhod"
+    "aerosol_independent_of_rhod",
+    "const_p"
   ]:
     if opt in opts and opts[opt] is not None:
       setattr(opts_init, opt, opts[opt])
@@ -44,7 +45,6 @@ def _micro_init(aerosol, opts, state):
     opts_init.n_sd_max = int(opts["n_sd_max"])
 
   opts_init.th_dry = True
-  opts_init.const_p = False
 
   # --- aerosol initialization ---
   # dry_distros from lognormal spec (opts['aerosol'])
@@ -127,7 +127,11 @@ def _micro_init(aerosol, opts, state):
   ambient_chem = {}
   if micro.opts_init.chem_switch:
     ambient_chem = dict((v, state[k]) for k,v in _Chem_g_id.items())
-  micro.init(state["th_d"], state["r_v"], state["rhod"], ambient_chem=ambient_chem)
+
+  if micro.opts_init.const_p:
+    micro.init(state["th_d"], state["r_v"], state["rhod"], state["p"], ambient_chem=ambient_chem)
+  else:
+    micro.init(state["th_d"], state["r_v"], state["rhod"], ambient_chem=ambient_chem)
 
   return micro
 
@@ -136,7 +140,6 @@ def _micro_step(micro, state, info, opts):
   '''Microphysics step for lagrangian scheme'''
   libopts = lgrngn.opts_t()
   libopts.cond = True
-  libopts.depo = True
   libopts.coal = False
   libopts.adve = False
   libopts.sedi = False
@@ -231,3 +234,7 @@ def _micro_step(micro, state, info, opts):
   micro.diag_water()
   micro.diag_sd_conc()
   state["sd_conc_liq"] = np.frombuffer(micro.outbuf())[0]
+
+  if micro.opts_init.const_p == True:
+    micro.diag_pressure()
+    state["p"] = np.frombuffer(micro.outbuf())[0]
