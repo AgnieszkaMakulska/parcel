@@ -1,5 +1,5 @@
 """
-Checking if insoluble component is important for condensation
+Checking if insoluble component is important for condensation and deposition
 """
 
 import sys
@@ -15,7 +15,7 @@ plt.rcParams.update({'font.size': 16})
 from matplotlib.ticker import LogLocator, FuncFormatter, NullFormatter
 
 w_list = [1.]
-z_max_list = [1500]
+z_max_list = [4000]
 z1 = 1000
 
 #composition of the mixed particle
@@ -35,7 +35,7 @@ def run_scheme(aerosol, w, z_max, outfile):
     args = dict(
         p_0=90000,
         RH_0=0.97,
-        T_0=283,
+        T_0=260,
         aerosol = aerosol,
         w = w,
         #dry_sizes = monodisperse,
@@ -48,14 +48,15 @@ def run_scheme(aerosol, w, z_max, outfile):
         outfreq=1,
         scheme="lgrngn",
         out_bin='{"liq": {"rght": 1, "moms": [0,1,2,3,4], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-20},' \
+                '"ice": {"rght": 1, "moms": [0,1,2,3,4], "drwt": "ice_a", "nbin": 1, "lnli": "lin", "left": 0.5e-20},' \
                 '"initial_spec": {"rght": 3e-6, "moms": [0], "drwt": "wet", "nbin": 100, "lnli": "log", "left": 0.01e-6},' \
                 '"spec": {"rght": 30e-6, "moms": [0], "drwt": "wet", "nbin": 1000, "lnli": "log", "left": 1e-6}}',
 
         sstp_cond = 10,
-        ice_switch = False,
-        ice_nucl = False,
+        ice_switch = True,
+        ice_nucl = True,
         time_dep_ice_nucl = True,
-        depo = False
+        depo = True
     )
     parcel(**args)
 
@@ -63,23 +64,30 @@ def run_scheme(aerosol, w, z_max, outfile):
 def read_profiles(outfile):
     with netcdf.netcdf_file(outfile, 'r') as f:
         z = np.array(f.variables['z'][:]).squeeze()
-        sd_conc = np.array(f.variables['sd_conc'][:]).squeeze()
+        T = np.array(f.variables['T'][:]).squeeze()
         act_m0 = np.array(f.variables['act_m0'][:]).squeeze()
         act_m1 = np.array(f.variables['act_m1'][:]).squeeze()
         act_m2 = np.array(f.variables['act_m2'][:]).squeeze()
         act_m4 = np.array(f.variables['act_m4'][:]).squeeze()
-        liq_m0 = np.array(f.variables['liq_m0'][:]).squeeze()
-        liq_m1 = np.array(f.variables['liq_m1'][:]).squeeze()
-        liq_m2 = np.array(f.variables['liq_m2'][:]).squeeze()
         liq_m3 = np.array(f.variables['liq_m3'][:]).squeeze()
-        liq_m4 = np.array(f.variables['liq_m4'][:]).squeeze()
+        ice_m0 = np.array(f.variables['ice_m0'][:]).squeeze()
+        ice_m1 = np.array(f.variables['ice_m1'][:]).squeeze()
+        ice_m2 = np.array(f.variables['ice_m2'][:]).squeeze()
+        ice_m3 = np.array(f.variables['ice_m3'][:]).squeeze()
+        ice_m4 = np.array(f.variables['ice_m4'][:]).squeeze()
         liq_mix_ratio = liq_m3 * 4/3 * np.pi * common.rho_w
         conc = act_m0
         mean_r = np.where(act_m0 > 0, act_m1 / act_m0, 0)
         std_dev_area = np.sqrt(np.where(act_m0 > 0, 
                         act_m4 / act_m0 - (act_m2 / act_m0)**2, 
                         0))
-    return z/1000, liq_mix_ratio*1e3, conc/1e6, mean_r*1e6, std_dev_area*1e12, sd_conc
+        ice_mix_ratio = ice_m3 * 4/3 * np.pi * common.rho_i
+        ice_conc = ice_m0
+        ice_mean_r = np.where(ice_m0 > 0, ice_m1 / ice_m0, 0)
+        ice_std_dev_area = np.sqrt(np.where(ice_m0 > 0, 
+                        ice_m4 / ice_m0 - (ice_m2 / ice_m0)**2, 
+                        0))
+    return z/1000, liq_mix_ratio*1e3, conc/1e6, mean_r*1e6, std_dev_area*1e12, ice_mix_ratio*1e3, ice_conc/1e6, ice_mean_r*1e6, ice_std_dev_area*1e12, T
 
 def read_distr(outfile):
     with netcdf.netcdf_file(outfile, 'r') as f:
@@ -100,7 +108,7 @@ def make_profiles(w):
 
     out_png = "plots/rd_insol/w_"+str(w)
 
-    fig, ax = plt.subplots(1, 4, figsize=(16.0, 15.0), sharey=True, squeeze=False)
+    fig, ax = plt.subplots(2, 4, figsize=(16.0, 15.0), sharey=True, squeeze=False)
     
     for aerosol in [sol, mix]:
         if aerosol == sol:
@@ -108,7 +116,7 @@ def make_profiles(w):
         elif aerosol == mix:
             aerosol_str = "mix"
         outfile = aerosol_str+".nc"
-        z, liq_mix_ratio, conc, mean_r, std_dev_area, sd_conc = read_profiles(outfile)
+        z, liq_mix_ratio, conc, mean_r, std_dev_area, ice_mix_ratio, ice_conc, ice_mean_r, ice_std_dev_area, T = read_profiles(outfile)
 
         lw = 2
         if aerosol == sol:
@@ -120,17 +128,25 @@ def make_profiles(w):
             c = 'violet'
             s = ':'
         ax[0,0].plot(liq_mix_ratio, z, color=c, label=l, linestyle=s, linewidth = lw)
-        #ax[0,0].plot(rel_disp, z, color=c, label=l, linestyle=s, linewidth = lw)
         ax[0,1].plot(conc, z, color=c, label=l, linestyle=s, linewidth = lw)
         ax[0,2].plot(mean_r, z, color=c, linestyle=s, linewidth = lw)
         ax[0,3].plot(std_dev_area, z, color=c, label=l, linestyle=s, linewidth = lw)
+        ax[1,0].plot(ice_mix_ratio, z, color=c, label=l, linestyle=s, linewidth = lw)
+        ax[1,1].plot(ice_conc, z, color=c, label=l, linestyle=s, linewidth = lw)
+        ax[1,2].plot(ice_mean_r, z, color=c, linestyle=s, linewidth = lw)
+        #ax[1,3].plot(ice_std_dev_area, z, color=c, label=l, linestyle=s, linewidth = lw)
+        ax[1,3].plot(T, z, color=c, label=l, linestyle=s, linewidth = lw)
 
     ax[0,0].set_ylabel('z [km]')
-    #ax[0,0].set_xlabel('rel. disp. of droplet radius')
     ax[0,0].set_xlabel('liquid mix. ratio [g/kg]')
     ax[0,1].set_xlabel('droplet concentration [1/mg]')
     ax[0,2].set_xlabel(f'droplet mean radius [$\mu$m]')
     ax[0,3].set_xlabel(f'std. dev. of droplet area [$\mu$m$^2$]')
+    ax[1,0].set_xlabel('ice mix. ratio [g/kg]')
+    ax[1,1].set_xlabel('ice concentration [1/mg]')
+    ax[1,2].set_xlabel(f'ice mean radius [$\mu$m]')
+    #ax[1,3].set_xlabel(f'std. dev. of ice area [$\mu$m$^2$]')
+    ax[1,3].set_xlabel('T [K]')
 
     handles, labels = ax[0,0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="center right", bbox_to_anchor=(0.8, 0.97))
@@ -193,4 +209,4 @@ for w,z_max in zip(w_list, z_max_list):
         outfile = aerosol_str+".nc"
         run_scheme(aerosol, w, z_max, outfile)
     make_profiles(w)
-    make_spectrum(w)
+    #make_spectrum(w)
