@@ -172,7 +172,7 @@ def make_profiles(w):
 def make_spectrum(w):
 
     out_png = "plots/rd_insol/w_"+str(w)
-    fig, ax = plt.subplots(3, 1, figsize=(5, 15), sharey=True, squeeze=False)
+    fig, ax = plt.subplots(3, 1, figsize=(8, 17), sharey=True, squeeze=True)
 
     for aerosol in [sol, mix]:
         if aerosol == sol:
@@ -182,38 +182,34 @@ def make_spectrum(w):
         outfile = aerosol_str+".nc"
         distr, radii, bin_widths, init_distr, init_radii, init_bin_widths, ice_distr, ice_radii, ice_bin_widths = read_distr(outfile)
 
-        l = "soluble" if aerosol==sol else "mixed"
+        l = "soluble only" if aerosol==sol else "mixed"
         c = "tab:blue" if aerosol==sol else "tab:orange"
-        ax[0, 0].bar(init_radii, init_distr, color=c, edgecolor=c, width=init_bin_widths, alpha=0.4, label = l, linewidth=2)
-        ax[0, 1].bar(radii, distr, color=c, edgecolor=c, width=bin_widths, alpha=0.4, label = l, linewidth=2)
-        ax[0, 2].bar(ice_radii, ice_distr, color=c, edgecolor=c, width=ice_bin_widths, alpha=0.4, label = l, linewidth=2)
+        ax[0].bar(init_radii, init_distr, color=c, edgecolor=c, width=init_bin_widths, alpha=0.4, label = l, linewidth=2)
+        ax[1].bar(radii, distr, color=c, edgecolor=c, width=bin_widths, alpha=0.4, label = l, linewidth=2)
+        ax[2].bar(ice_radii, ice_distr, color=c, edgecolor=c, width=ice_bin_widths, alpha=0.4, label = l, linewidth=2)
     
-    ax[0,0].set_title(f'z = 0 m')
-    ax[0,1].set_title(f'z = '+str(z_liq)+' m')
-    ax[0,2].set_title(f'z = '+str(z_ice)+' m')
+    ax[0].set_title(f'z = 0 m')
+    ax[1].set_title(f'z = '+str(z_liq)+' m')
+    ax[2].set_title(f'z = '+str(z_ice)+' m')
     # ax[0,0].set_xlim(0,5)
-    #ax[0,1].set_xlim(14,20)
-    ax[0,0].set_xscale('log')
-    ax[0,1].set_xscale('log')
-    ax[0,2].set_xscale('log')
-    ax[0,0].set_yscale('log')
-    ax[0,1].set_yscale('log')
-    ax[0,2].set_yscale('log')
-    ax[0,0].set_ylabel('droplet concentration [1/mg]')        
-    ax[0,0].set_xlabel(f'droplet radius [$\mu$m]')
-    ax[0,1].set_xlabel(f'droplet radius [$\mu$m]')
-    ax[0,2].set_xlabel(f'droplet radius [$\mu$m]')
-    ax[0,1].legend()
+    ax[1].set_xlim(9.5,13)
+    for i in range(3):
+        ax[i].set_xscale('log')
+        ax[i].set_yscale('log')
+        ax[i].legend()
+    for i in range(2):
+        ax[i].set_ylabel('droplet concentration [1/mg]')        
+    ax[2].set_ylabel('ice concentration [1/mg]')     
+    ax[2].set_xlabel(f'radius [$\mu$m]')
 
-    # for j in [0, 1]:
-    #     ax[0, j].xaxis.set_major_locator(
-    #         LogLocator(base=10, subs=[1,2,3,4,5,6,7,8,9])
-    #     )
-    #     ax[0, j].xaxis.set_major_formatter(
-    #         FuncFormatter(lambda x, _: f'{x:g}')
-    #     )
-    #     ax[0, j].xaxis.set_minor_formatter(NullFormatter())
-    plt.suptitle('w = '+str(w)+' m/s')
+    ax[1].xaxis.set_major_locator(
+        LogLocator(base=10, subs=[10,11,12,13])
+    )
+    ax[1].xaxis.set_major_formatter(
+        FuncFormatter(lambda x, _: f'{x:g}')
+    )
+    ax[1].xaxis.set_minor_formatter(NullFormatter())
+    #plt.suptitle('w = '+str(w)+' m/s')
     plt.savefig(out_png + "_distr.pdf", dpi=200)
 
 
@@ -224,6 +220,6 @@ for w,z_max in zip(w_list, z_max_list):
         elif aerosol == mix:
             aerosol_str = "mix"
         outfile = aerosol_str+".nc"
-        run_scheme(aerosol, w, z_max, outfile)
+        #run_scheme(aerosol, w, z_max, outfile)
     make_profiles(w)
     make_spectrum(w)
