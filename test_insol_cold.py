@@ -11,12 +11,21 @@ from parcel import parcel
 from scipy.io import netcdf
 import matplotlib.pyplot as plt
 from libcloudphxx import common
-plt.rcParams.update({'font.size': 16})
 from matplotlib.ticker import LogLocator, FuncFormatter, NullFormatter
+plt.style.use('seaborn-v0_8')
+plt.rcParams.update({'font.size': 16})
+plt.rcParams.update({
+    'axes.labelsize': 16,   # Font size of the X and Y labels
+    'axes.titlesize': 16,   # Font size of the plot title
+    'xtick.labelsize': 16,  # Font size of the X-axis tick numbers
+    'ytick.labelsize': 16,   # Font size of the Y-axis tick numbers
+    'legend.fontsize': 16
+})
 
 w_list = [1.]
 z_max_list = [4000]
-z1 = 1000
+z_liq = 1000
+z_ice = 3500
 
 #composition of the mixed particle
 rd_insol = 0.5e-6
@@ -50,6 +59,7 @@ def run_scheme(aerosol, w, z_max, outfile):
         out_bin='{"liq": {"rght": 1, "moms": [0,1,2,3,4], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-20},' \
                 '"ice": {"rght": 1, "moms": [0,1,2,3,4], "drwt": "ice_a", "nbin": 1, "lnli": "lin", "left": 0.5e-20},' \
                 '"initial_spec": {"rght": 3e-6, "moms": [0], "drwt": "wet", "nbin": 100, "lnli": "log", "left": 0.01e-6},' \
+                '"ice_spec": {"rght": 300e-6, "moms": [0], "drwt": "ice_a", "nbin": 50, "lnli": "log", "left": 1e-6},' \
                 '"spec": {"rght": 30e-6, "moms": [0], "drwt": "wet", "nbin": 1000, "lnli": "log", "left": 1e-6}}',
 
         sstp_cond = 10,
@@ -92,16 +102,19 @@ def read_profiles(outfile):
 def read_distr(outfile):
     with netcdf.netcdf_file(outfile, 'r') as f:
         z = np.array(f.variables['z'][:]).squeeze()
-        distr = np.array(f.variables['spec_m0'][:]).squeeze()
+
+        distr = np.array(f.variables['spec_m0'][:]).squeeze()[np.argmin(np.abs(z - z_liq))]
         radii = np.array(f.variables['spec_r_wet'][:]).squeeze()
         bin_widths = np.array(f.variables['spec_dr_wet'][:]).squeeze()
-        init_distr = np.array(f.variables['initial_spec_m0'][:]).squeeze()
+
+        init_distr = np.array(f.variables['initial_spec_m0'][:]).squeeze()[np.argmin(np.abs(z))]
         init_radii = np.array(f.variables['initial_spec_r_wet'][:]).squeeze()
         init_bin_widths = np.array(f.variables['initial_spec_dr_wet'][:]).squeeze()
-        initial_distr = init_distr[np.argmin(np.abs(z))]
-        distr1 = distr[np.argmin(np.abs(z - z1))]
-        #distr2 = distr[np.argmin(np.abs(z - z2))]
-    return distr1/1e6, radii*1e6, bin_widths*1e6, initial_distr/1e6, init_radii*1e6, init_bin_widths*1e6
+
+        ice_distr = np.array(f.variables['ice_spec_m0'][:]).squeeze()[np.argmin(np.abs(z - z_ice))]
+        ice_radii = np.array(f.variables['ice_spec_r_ice_a'][:]).squeeze()
+        ice_bin_widths = np.array(f.variables['ice_spec_dr_ice_a'][:]).squeeze()
+    return distr/1e6, radii*1e6, bin_widths*1e6, init_distr/1e6, init_radii*1e6, init_bin_widths*1e6, ice_distr/1e6, ice_radii*1e6, ice_bin_widths*1e6
 
 
 def make_profiles(w):
@@ -122,11 +135,11 @@ def make_profiles(w):
         if aerosol == sol:
             l = 'soluble'
             c = 'blue'
-            s = '-'
+            s = '--'
         else:
             l = 'mixed'
-            c = 'violet'
-            s = ':'
+            c = 'darkorange'
+            s = '-'
         ax[0,0].plot(liq_mix_ratio, z, color=c, label=l, linestyle=s, linewidth = lw)
         ax[0,1].plot(conc, z, color=c, label=l, linestyle=s, linewidth = lw)
         ax[0,2].plot(mean_r, z, color=c, linestyle=s, linewidth = lw)
@@ -156,11 +169,10 @@ def make_profiles(w):
 
 
 
-
 def make_spectrum(w):
 
     out_png = "plots/rd_insol/w_"+str(w)
-    fig, ax = plt.subplots(1, 2, figsize=(16.0, 7.0), sharey=True, squeeze=False)
+    fig, ax = plt.subplots(3, 1, figsize=(5, 15), sharey=True, squeeze=False)
 
     for aerosol in [sol, mix]:
         if aerosol == sol:
@@ -168,25 +180,30 @@ def make_spectrum(w):
         elif aerosol == mix:
             aerosol_str = "mix"
         outfile = aerosol_str+".nc"
-        distr1, radii, bin_widths, initial_distr, init_radii, init_bin_widths = read_distr(outfile)
+        distr, radii, bin_widths, init_distr, init_radii, init_bin_widths, ice_distr, ice_radii, ice_bin_widths = read_distr(outfile)
 
         l = "soluble" if aerosol==sol else "mixed"
         c = "tab:blue" if aerosol==sol else "tab:orange"
-        ax[0, 0].bar(init_radii, initial_distr, color=c, edgecolor=c, width=init_bin_widths, alpha=0.4, label = l, linewidth=2)
-        ax[0, 1].bar(radii, distr1, color=c, edgecolor=c, width=bin_widths, alpha=0.4, label = l, linewidth=2)
+        ax[0, 0].bar(init_radii, init_distr, color=c, edgecolor=c, width=init_bin_widths, alpha=0.4, label = l, linewidth=2)
+        ax[0, 1].bar(radii, distr, color=c, edgecolor=c, width=bin_widths, alpha=0.4, label = l, linewidth=2)
+        ax[0, 2].bar(ice_radii, ice_distr, color=c, edgecolor=c, width=ice_bin_widths, alpha=0.4, label = l, linewidth=2)
     
     ax[0,0].set_title(f'z = 0 m')
-    ax[0,1].set_title(f'z = '+str(z1)+' m')
+    ax[0,1].set_title(f'z = '+str(z_liq)+' m')
+    ax[0,2].set_title(f'z = '+str(z_ice)+' m')
     # ax[0,0].set_xlim(0,5)
-    ax[0,1].set_xlim(14,20)
+    #ax[0,1].set_xlim(14,20)
     ax[0,0].set_xscale('log')
     ax[0,1].set_xscale('log')
+    ax[0,2].set_xscale('log')
     ax[0,0].set_yscale('log')
     ax[0,1].set_yscale('log')
-    ax[0, 0].set_ylabel('droplet concentration [1/mg]')        
+    ax[0,2].set_yscale('log')
+    ax[0,0].set_ylabel('droplet concentration [1/mg]')        
     ax[0,0].set_xlabel(f'droplet radius [$\mu$m]')
     ax[0,1].set_xlabel(f'droplet radius [$\mu$m]')
-    ax[0, 1].legend()
+    ax[0,2].set_xlabel(f'droplet radius [$\mu$m]')
+    ax[0,1].legend()
 
     # for j in [0, 1]:
     #     ax[0, j].xaxis.set_major_locator(
@@ -209,4 +226,4 @@ for w,z_max in zip(w_list, z_max_list):
         outfile = aerosol_str+".nc"
         run_scheme(aerosol, w, z_max, outfile)
     make_profiles(w)
-    #make_spectrum(w)
+    make_spectrum(w)
