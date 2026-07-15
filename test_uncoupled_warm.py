@@ -37,7 +37,7 @@ def run_scheme(mixing, perparticle, dt, sstp, aerosol, w_max, z_max, outfile):
         aerosol = aerosol,
         #dry_sizes = monodisperse,
         sd_conc=None,
-        sd_const_multi=1000000,
+        sd_const_multi=100000,
         n_sd_max=1e7,
         dt=dt,
         z_max=None,
