@@ -14,9 +14,9 @@ from libcloudphxx import common
 plt.rcParams.update({'font.size': 16})
 from matplotlib.ticker import LogLocator, FuncFormatter, NullFormatter
 
-timesteps = [1]
-w_list = [0.25]
-z_max_list = [10]
+timesteps = [1,2,4]
+w_list = [0.25,1.,4.]
+z_max_list = [1500.,1500,1500.]
 z1 = 900
 z2 = 1200
 
@@ -26,12 +26,12 @@ pristine = '{"pristine": {"kappa": 1.28, "rd_insol": 0.0, "mean_r": [0.011e-6, 0
 
 #monomod = '{"monomodal": {"kappa": 1.28, "rd_insol": 0.0, "mean_r": [0.04e-6], "gstdev": [2.2], "n_tot": [1000.0e6]}}'
 
-aerosol_list = [polluted]
+aerosol_list = [polluted, pristine]
 
 
 def run_scheme(mixing, perparticle, dt, sstp, aerosol, w_max, z_max, outfile):
     args = dict(
-        p_0=90000,
+        p_0=90000.,
         RH_0=0.97,
         T_0=283,
         aerosol = aerosol,
@@ -58,7 +58,7 @@ def run_scheme(mixing, perparticle, dt, sstp, aerosol, w_max, z_max, outfile):
         ice_nucl = False,
         time_dep_ice_nucl = True,
         depo = False,
-        const_p = True
+        const_p = False
     )
     parcel(**args)
 
@@ -67,7 +67,7 @@ def run(aerosol, w_max, z_max):
     for i in range(len(timesteps)):
         dt = timesteps[i]
         sstp = 10 * dt
-        for (mixing, perparticle) in [(True,True), (False,True), (True,False)]:
+        for (mixing, perparticle) in [(True,True), (False,True)]: #, (True,False)]:
             outfile = "mixing_"+str(mixing)+"_perparticle_"+str(perparticle)+"_dt_"+str(dt)+".nc"
             run_scheme(mixing, perparticle, dt, sstp, aerosol, w_max, z_max, outfile)
 
@@ -91,7 +91,6 @@ def read_profiles(outfile):
                         0))
         rel_disp = np.where(act_r > 0, std_dev_radius / act_r, 0)
         sd_conc = np.array(f.variables['sd_conc'][:]).squeeze()
-        print(p)
     return z/1000, liq_mix_ratio*1e3, act_conc/1e6, act_r*1e6, std_dev_area*1e12, rel_disp, sd_conc
 
 def read_distr(outfile):
@@ -117,13 +116,13 @@ def make_figures(aerosol, w_max):
     out_png = "plots/outputs/coupled_uncoupled/"+aerosol_str+"_w_"+str(w_max)
 
     # plotting profiles
-    fig, ax = plt.subplots(len(timesteps), 4, figsize=(16.0, 15.0), sharey=True, squeeze=False)
+    fig, ax = plt.subplots(len(timesteps), 5, figsize=(20.0, 15.0), sharey=True, squeeze=False)
     for i in range(len(timesteps)):
         dt = timesteps[i]
-        for (mixing, perparticle) in [(True,True), (False,True), (True,False)]:
+        for (mixing, perparticle) in [(True,True), (False,True)]: #, (True,False)]:
             outfile = "mixing_"+str(mixing)+"_perparticle_"+str(perparticle)+"_dt_"+str(dt)+".nc"
             z, liq_mix_ratio, act_conc, act_r, std_dev_area, rel_disp, sd_conc = read_profiles(outfile)
-            print(sd_conc)
+            #print(sd_conc)
 
             lw = 2
             if mixing:
@@ -138,18 +137,18 @@ def make_figures(aerosol, w_max):
                 l = 'per-cell'
                 c = 'orange'
                 s = '--'
-            #ax[i,0].plot(liq_mix_ratio, z, color=c, label=l, linestyle=s, linewidth = lw)
-            ax[i,0].plot(rel_disp, z, color=c, label=l, linestyle=s, linewidth = lw)
+            ax[i,0].plot(liq_mix_ratio, z, color=c, label=l, linestyle=s, linewidth = lw)
             ax[i,1].plot(act_conc, z, color=c, label=l, linestyle=s, linewidth = lw)
             ax[i,2].plot(act_r, z, color=c, linestyle=s, linewidth = lw)
             ax[i,3].plot(std_dev_area, z, color=c, label=l, linestyle=s, linewidth = lw)
+            ax[i,4].plot(rel_disp, z, color=c, label=l, linestyle=s, linewidth = lw)
 
         ax[i,0].set_ylabel('z [km]')
-    ax[-1,0].set_xlabel('rel. disp. of droplet radius')
-    #ax[-1,0].set_xlabel('liquid mix. ratio [g/kg]')
+    ax[-1,0].set_xlabel('liquid mix. ratio [g/kg]')
     ax[-1,1].set_xlabel('droplet concentration [1/mg]')
-    ax[-1,2].set_xlabel(f'droplet mean radius [$\mu$m]')
-    ax[-1,3].set_xlabel(f'std. dev. of droplet area [$\mu$m$^2$]')
+    ax[-1,2].set_xlabel(f'droplet mean radius [$\\mu$m]')
+    ax[-1,3].set_xlabel(f'std. dev. of droplet area [$\\mu$m$^2$]')
+    ax[-1,4].set_xlabel('rel. disp. of droplet radius')
 
     handles, labels = ax[0,0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="center right", bbox_to_anchor=(0.8, 0.97))
@@ -168,7 +167,7 @@ def make_figures(aerosol, w_max):
     fig, ax = plt.subplots(len(timesteps), 2, figsize=(16.0, 7.0* len(timesteps)), sharey=True, squeeze=False)
     for i in range(len(timesteps)):
         dt = timesteps[i]
-        for (mixing, perparticle) in [(True,True), (False,True), (True,False)]:
+        for (mixing, perparticle) in [(True,True), (False,True)]: #, (True,False)]:
             outfile = "mixing_"+str(mixing)+"_perparticle_"+str(perparticle)+"_dt_"+str(dt)+".nc"
             distr1, distr2, radii, bin_widths = read_distr(outfile)
             l = "coupled" if mixing else "uncoupled"
@@ -187,8 +186,8 @@ def make_figures(aerosol, w_max):
         ax[i,0].set_yscale('log')
         ax[i,1].set_yscale('log')
         ax[i, 0].set_ylabel('droplet concentration [1/mg]')        
-    ax[-1,0].set_xlabel(f'droplet radius [$\mu$m]')
-    ax[-1,1].set_xlabel(f'droplet radius [$\mu$m]')
+    ax[-1,0].set_xlabel(f'droplet radius [$\\mu$m]')
+    ax[-1,1].set_xlabel(f'droplet radius [$\\mu$m]')
     ax[0, 1].legend()
 
     for j in [0, 1]:
