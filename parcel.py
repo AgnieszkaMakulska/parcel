@@ -37,7 +37,7 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
   depo = False,
   sd_conc = 64,
   sd_const_multi = None,
-  n_sd_max = None,
+  n_sd_max = 1e6,
   aerosol = '{"ammonium_sulfate": {"kappa": 0.61, "rd_insol": 0.0, "mean_r": [0.02e-6], "gstdev": [1.4], "n_tot": [60.0e6]}}',
   dry_sizes = None,
   out_bin = '{"radii": {"rght": 0.01, "moms": [0], "drwt": "wet", "nbin": 1, "lnli": "log", "left": 1e-15}}',
@@ -312,9 +312,6 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
         state["t"] = it * dt
 
         # pressure
-
-        if const_p == True:
-          pass
         if pprof == "pprof_const_th_rv":
           # as in icicle model
           p_hydro = _p_hydro_const_th_rv(state["z"], p_0, th_0, r_0)

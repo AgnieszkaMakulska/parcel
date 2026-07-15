@@ -129,7 +129,7 @@ def _micro_init(aerosol, opts, state):
     ambient_chem = dict((v, state[k]) for k,v in _Chem_g_id.items())
 
   if micro.opts_init.const_p:
-    micro.init(state["th_d"], state["r_v"], state["rhod"], state["p"], ambient_chem=ambient_chem)
+    micro.init(state["th_d"], state["r_v"], state["rhod"], np.atleast_1d(state["p"]), ambient_chem=ambient_chem)
   else:
     micro.init(state["th_d"], state["r_v"], state["rhod"], ambient_chem=ambient_chem)
 
@@ -235,6 +235,5 @@ def _micro_step(micro, state, info, opts):
   micro.diag_sd_conc()
   state["sd_conc_liq"] = np.frombuffer(micro.outbuf())[0]
 
-  if micro.opts_init.const_p == True:
-    micro.diag_pressure()
-    state["p"] = np.frombuffer(micro.outbuf())[0]
+  micro.diag_pressure()
+  state["p"] = np.frombuffer(micro.outbuf())[0]
