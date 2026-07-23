@@ -44,7 +44,8 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
   sstp_chem = 1,
   wait = 0,
   large_tail = False,
-  rng_seed = None
+  rng_seed = None,
+  backend = "serial"
 ):
   """
   Args:
@@ -56,6 +57,7 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
     r_0     (Optional[float]):    initial water vapour mass mixing ratio [kg/kg]
     RH_0    (Optional[float]):    initial relative humidity
     scheme  (Optional[string]):   microphysics scheme to use: 'lgrngn', 'blk_1m'
+    backend (Optional[str]):      lgrngn backend to use: 'serial', 'openmp', 'cuda' (only used when scheme='lgrngn')
     ice_switch (Optional[bool]):  enable ice microphysics
     ice_nucl (Optional[bool]):    enable ice nucleation in lagrangian scheme
     time_dep_ice_nucl (Optional[bool]): enable time-dependent ice nucleation in lagrangian scheme

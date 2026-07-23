@@ -43,7 +43,23 @@ def _micro_init(aerosol, opts, state):
     opts_init.sstp_chem = opts["sstp_chem"]
 
   # initialisation
-  micro = lgrngn.factory(lgrngn.backend_t.serial, opts_init)
+  backend_str = opts.get("backend", "serial")
+  if backend_str is None:
+    backend_str = "serial"
+  backend_str = str(backend_str).lower()
+
+  backend_map = {
+    "serial": lgrngn.backend_t.serial,
+    "openmp": lgrngn.backend_t.OpenMP,
+    "omp": lgrngn.backend_t.OpenMP,
+    "cuda": lgrngn.backend_t.CUDA,
+    "gpu": lgrngn.backend_t.CUDA,
+  }
+  if backend_str not in backend_map:
+    raise ValueError(f"Unknown lgrngn backend: {backend_str!r} (expected one of: {', '.join(sorted(backend_map))})")
+
+  micro = lgrngn.factory(backend_map[backend_str], opts_init)
+
   ambient_chem = {}
   if micro.opts_init.chem_switch:
     ambient_chem = dict((v, state[k]) for k,v in _Chem_g_id.items())
