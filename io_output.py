@@ -41,11 +41,11 @@ def _output_bins(fout, t, micro, opts, spectra):
           elif dct["drwt"] == 'ice_c':
             micro.diag_ice_c_mom(vm)
           else: raise Exception("drwt should be wet or dry or ice_a or ice_c")
-          fout.variables[dim+'_m'+str(vm)][int(t), int(bin)] = np.frombuffer(micro.outbuf())
+          fout.variables[dim+'_m'+str(vm)][int(t), int(bin)] = np.frombuffer(micro.outbuf()).item()
         else:
           # calculate chemistry
           micro.diag_chem(_Chem_a_id[vm])
-          fout.variables[dim+'_'+vm][int(t), int(bin)] = np.frombuffer(micro.outbuf())
+          fout.variables[dim+'_'+vm][int(t), int(bin)] = np.frombuffer(micro.outbuf()).item()
 
 
 def _output_init(micro, opts, spectra):
@@ -182,7 +182,7 @@ def _output_init_blk_1m_ice(opts):
 
 def _output_save(fout, state, rec):
   for var, val in state.items():
-    fout.variables[var][int(rec)] = val
+    fout.variables[var][int(rec)] = np.asarray(val).item()
 
 
 def _save_attrs(fout, dictnr):
