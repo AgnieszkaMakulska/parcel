@@ -15,21 +15,30 @@ plt.rcParams.update({'font.size': 16})
 from matplotlib.ticker import LogLocator, FuncFormatter, NullFormatter
 
 w_list = [1.]
-z_max_list = [1500]
-z1 = 1000
+z_max_list = [500]
+z1 = 400
 
 #composition of the mixed particle
-rd_insol = 0.5e-6
+rd_insol = 0.3e-6
 rd_sol = 0.02e-6
-rd = np.cbrt(rd_insol**3 + rd_sol**3)
-epsilon = rd_sol **3 / rd**3
+
+
+if rd_insol == 0:
+    rd = rd_sol
+    epsilon = 1.0
+else:
+    rd = np.cbrt(rd_insol**3 + rd_sol**3)
+    epsilon = rd_sol **3 / rd**3
 print(epsilon)
 
-sol = f'{{"soluble": {{"kappa": 1.28, "sol_frac": 1.0, "mean_r": [{rd_sol}], "gstdev": [1.4], "n_tot": [200.0e6]}} }}'
+# sol = '{"polluted": {"kappa": 1.28, "sol_frac": 1.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}'
+# mix = f'{{"polluted": {{"kappa": 1.28, "sol_frac": 1.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}, \
+#            "mixed": {{"kappa": 1.28, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.4], "n_tot": [1.0e6]}} }}'
 
-mix = f'{{"soluble": {{"kappa": 1.28, "sol_frac": 1.0, "mean_r": [{rd_sol}], "gstdev": [1.4], "n_tot": [199.0e6]}}, \
+
+sol = '{"pristine": {"kappa": 1.28, "sol_frac": 1.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}'
+mix = f'{{"pristine": {{"kappa": 1.28, "sol_frac": 1.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}, \
            "mixed": {{"kappa": 1.28, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.4], "n_tot": [1.0e6]}} }}'
-
 
 def run_scheme(aerosol, w, z_max, outfile):
     args = dict(
@@ -126,7 +135,6 @@ def make_profiles(w):
         ax[0,3].plot(std_dev_area, z, color=c, label=l, linestyle=s, linewidth = lw)
 
     ax[0,0].set_ylabel('z [km]')
-    #ax[0,0].set_xlabel('rel. disp. of droplet radius')
     ax[0,0].set_xlabel('liquid mix. ratio [g/kg]')
     ax[0,1].set_xlabel('droplet concentration [1/mg]')
     ax[0,2].set_xlabel(f'droplet mean radius [$\mu$m]')
@@ -171,15 +179,6 @@ def make_spectrum(w):
     ax[0,0].set_xlabel(f'droplet radius [$\mu$m]')
     ax[0,1].set_xlabel(f'droplet radius [$\mu$m]')
     ax[0, 1].legend()
-
-    # for j in [0, 1]:
-    #     ax[0, j].xaxis.set_major_locator(
-    #         LogLocator(base=10, subs=[1,2,3,4,5,6,7,8,9])
-    #     )
-    #     ax[0, j].xaxis.set_major_formatter(
-    #         FuncFormatter(lambda x, _: f'{x:g}')
-    #     )
-    #     ax[0, j].xaxis.set_minor_formatter(NullFormatter())
     plt.suptitle('w = '+str(w)+' m/s')
     plt.savefig(out_png + "_distr.pdf", dpi=200)
 
