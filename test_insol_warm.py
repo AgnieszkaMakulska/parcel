@@ -1,5 +1,5 @@
 """
-Checking how insoluble component impacts condensation
+Checking if insoluble component is important for condensation
 """
 
 import sys
@@ -13,25 +13,22 @@ import matplotlib.pyplot as plt
 from libcloudphxx import common
 plt.rcParams.update({'font.size': 16})
 from matplotlib.ticker import LogLocator, FuncFormatter, NullFormatter
-import json
 
 w_list = [1.]
 z_max_list = [1500]
 z1 = 1000
 
 #composition of the mixed particle
-rd_insol = 0.3e-6
+rd_insol = 0.5e-6
 rd_sol = 0.02e-6
 rd = np.cbrt(rd_insol**3 + rd_sol**3)
 epsilon = rd_sol **3 / rd**3
 print(epsilon)
 
-polluted = '{"polluted": {"kappa": 1.28, "sol_frac": 1., "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}'
-pristine = '{"pristine": {"kappa": 1.28, "sol_frac": 1., "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}'
-dust = f'{{"mixed": {{"kappa": 1.28, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.4], "n_tot": [1.0e6]}} }}'
+sol = f'{{"soluble": {{"kappa": 1.28, "sol_frac": 1.0, "mean_r": [{rd_sol}], "gstdev": [1.4], "n_tot": [200.0e6]}} }}'
 
-sol = polluted
-mix = '{' + polluted + ', ' + dust + '}'
+mix = f'{{"soluble": {{"kappa": 1.28, "sol_frac": 1.0, "mean_r": [{rd_sol}], "gstdev": [1.4], "n_tot": [199.0e6]}}, \
+           "mixed": {{"kappa": 1.28, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.4], "n_tot": [1.0e6]}} }}'
 
 
 def run_scheme(aerosol, w, z_max, outfile):
@@ -58,8 +55,7 @@ def run_scheme(aerosol, w, z_max, outfile):
         ice_switch = False,
         ice_nucl = False,
         time_dep_ice_nucl = True,
-        depo = False,
-        backend = "OpenMP"
+        depo = False
     )
     parcel(**args)
 
@@ -139,7 +135,7 @@ def make_profiles(w):
     handles, labels = ax[0,0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="center right", bbox_to_anchor=(0.8, 0.97))
     fig.tight_layout(rect=[0, 0, 1, 0.95])
-    plt.suptitle('w = '+str(w)+' m/s')
+    plt.suptitle('w = '+str(w)+' m/s, '+ aerosol_str)
     plt.savefig(out_png + ".pdf", dpi=200)
 
 
