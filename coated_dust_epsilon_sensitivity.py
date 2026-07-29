@@ -24,16 +24,20 @@ z_max = 500
 
 def run_scheme(epsilon, rd, outfile):
 
-    mix = f'{{"soluble":{{"kappa": 1.28, "sol_frac": 1.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}, \
-                "mixed": {{"kappa": 1.28, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.4], "n_tot": [10.0e6]}} }}'
+    
+    if epsilon == 1.0:
+        aerosol = '{"pristine": {"kappa": 1.28, "sol_frac": 1.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}'
+    else:
+        aerosol = f'{{"soluble":{{"kappa": 1.28, "sol_frac": 1.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}, \
+                "mixed": {{"kappa": 1.28, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.4], "n_tot": [1.0e6]}} }}'
 
     args = dict(
         p_0=90000,
         RH_0=0.97,
         T_0=283,
-        aerosol = mix,
+        aerosol = aerosol,
         w = w,
-        sd_conc=100,
+        sd_conc=10000,
         #sd_const_multi=1000000,
         #n_sd_max=1e7,
         dt=1,
@@ -45,9 +49,8 @@ def run_scheme(epsilon, rd, outfile):
         sstp_cond = 10,
         ice_switch = False,
         ice_nucl = False,
-        time_dep_ice_nucl = True,
         depo = False,
-        backend = "OpenMP"
+        backend = "gpu"
     )
     parcel(**args)
 
@@ -76,14 +79,17 @@ def read(outfile):
 
 def make_profiles():
 
-    rd_sol = 0.02e-6
-    rd_insol_list = np.array([0.0, 0.3, 1., 5.]) * 1e-6
+    # rd_sol = 0.06e-6
+    # rd_insol_list = np.array([0.0, 0.1, 0.3, 1., 5., 8.]) * 1e-6
+
+    rd_insol = 1e-6
+    rd_sol_list = np.array([0.01, 0.03, 0.06, 0.1]) * 1e-6
 
     out_png = "plots/rd_insol/sens"
 
     fig, ax = plt.subplots(1, 4, figsize=(16.0, 15.0), sharey=True, squeeze=False)
     
-    for rd_insol in rd_insol_list:
+    for rd_sol in rd_sol_list:
         if rd_insol == 0.0:
             rd = rd_sol
             epsilon = 1.0
@@ -91,8 +97,8 @@ def make_profiles():
             rd = np.cbrt(rd_insol**3 + rd_sol**3)
             epsilon = rd_sol**3 / rd**3
 
-        outfile = str(rd_insol)+".nc"
-        l = 'rd_insol = ' + str(rd_insol*1e6) + 'um'
+        outfile = str(rd_sol)+".nc"
+        l = 'rd_sol = ' + str(rd_sol*1e6) + 'um'
         run_scheme(epsilon, rd, outfile)
         z, liq_mix_ratio, conc, mean_r, std_dev_area = read(outfile)
      
@@ -107,8 +113,11 @@ def make_profiles():
     ax[0,2].set_xlabel(f'droplet mean radius [$\mu$m]')
     ax[0,3].set_xlabel(f'std. dev. of droplet area [$\mu$m$^2$]')
 
+    #ax[0,1].set_xlim(45,60)
+    ax[0,1].set_xlim(43,48)
+
     handles, labels = ax[0,0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="center right", bbox_to_anchor=(0.8, 0.97))
+    fig.legend(handles, labels, loc="center right", bbox_to_anchor=(0.8, 0.9))
     fig.tight_layout(rect=[0, 0, 1, 0.95])
     plt.savefig(out_png + ".pdf", dpi=200)
 
