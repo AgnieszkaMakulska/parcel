@@ -59,7 +59,6 @@ def run_scheme(epsilon, rd, outfile):
 
 def read(outfile):
     with netcdf.netcdf_file(outfile, 'r') as f:
-        z = np.array(f.variables['z'][:]).squeeze()
         act_m0 = np.array(f.variables['act_m0'][:]).squeeze()
         act_m1 = np.array(f.variables['act_m1'][:]).squeeze()
         act_m2 = np.array(f.variables['act_m2'][:]).squeeze()
@@ -75,55 +74,80 @@ def read(outfile):
         std_dev_area = np.sqrt(np.where(act_m0 > 0, 
                         act_m4 / act_m0 - (act_m2 / act_m0)**2, 
                         0)) * 4 * np.pi
-    return z, liq_mix_ratio*1e3, conc/1e6, mean_r*1e6, std_dev_area*1e12
+    return liq_mix_ratio[-1]*1e3, conc[-1]/1e6, mean_r[-1]*1e6, std_dev_area[-1]*1e12
 
 
+rd_sol_list = np.linspace(0.01, 0.1, 5) * 1e-6
+rd_insol_list = np.linspace(0.1, 10, 5) * 1e-6
 
-def make_profiles():
+lwc_list = []
+nc_list = []
+rc_list = []
+a_stdev_list = []
+x_coords = []
+y_coords = []
 
-    rd_insol_list = np.array([0.0, 0.1, 1., 8.]) * 1e-6
-
-    out_png = "plots/rd_insol/different_rd_insol.pdf"
-
-    fig, ax = plt.subplots(2, 2, figsize=(8.0, 9.0), sharey=True, squeeze=False)
-    ax = ax.flatten()
-    
+for rd_sol in rd_sol_list:
     for rd_insol in rd_insol_list:
         if rd_insol == 0.0:
+            rd = rd_sol
             epsilon = 1.0
-            rd = 0
-            l = 'no dust'
         else:
-            epsilon = 0.01
-            rd = np.cbrt( rd_insol**3 / (1-epsilon) )
-            l = '$r_{insol}$ = ' + str(round(rd_insol*1e6, 1)) + ' $\\mu$m'
-
-        outfile = str(rd_insol)+".nc"
+            rd = np.cbrt(rd_insol**3 + rd_sol**3)
+            epsilon = rd_sol**3 / rd**3
+    
+        outfile = "test.nc"
         run_scheme(epsilon, rd, outfile)
-        z, liq_mix_ratio, conc, mean_r, std_dev_area = read(outfile)
+        liq_mix_ratio, conc, mean_r, std_dev_area = read(outfile)
         os.remove(outfile)
-     
-        ax[0].plot(liq_mix_ratio, z, label=l)
-        ax[1].plot(conc, z, label=l)
-        ax[2].plot(mean_r, z, label=l)
-        ax[3].plot(std_dev_area, z, label=l)
 
-    ax[0].set_ylabel('z [m]')
-    ax[2].set_ylabel('z [m]')
-    ax[0].set_xlabel('liquid mix. ratio [g/kg]')
-    ax[1].set_xlabel('droplet concentration [1/mg]')
-    ax[2].set_xlabel(f'droplet mean radius [$\mu$m]')
-    ax[3].set_xlabel(f'std. dev. of droplet area [$\mu$m$^2$]')
-    ax[0].set_xlim(0.1,0.6)
-    ax[1].set_xlim(40,65)
-    ax[2].set_xlim(5,15)
-    ax[3].set_xlim(40,90)
+        lwc_list.append(liq_mix_ratio)
+        nc_list.append(conc)
+        rc_list.append(mean_r)
+        a_stdev_list.append(std_dev_area)
+        x_coords.append(rd_sol)
+        y_coords.append(rd_insol)
 
-    handles, labels = ax[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.89),
-               ncol=2, frameon=False)
-    plt.tight_layout(rect=[0, 0, 1, 0.9])
+n_sol = len(rd_sol_list)
+n_insol = len(rd_insol_list)
 
-    plt.savefig(out_png, dpi=200, bbox_inches='tight')
+def to_grid(flat_list):
+    arr = np.array(flat_list).reshape(n_sol, n_insol).T  # -> shape (n_insol, n_sol)
+    return arr
 
-make_profiles()
+# print(to_grid(x_coords))
+# print(to_grid(y_coords))
+
+datasets = [to_grid(lwc_list), to_grid(nc_list), to_grid(rc_list), to_grid(a_stdev_list)]
+titles = [
+    'liquid mix. ratio [g/kg]',
+    'droplet concentration [1/mg]',
+    f'droplet mean radius [$\mu$m]',
+    f'std. dev. of droplet area [$\mu$m$^2$]'
+]
+
+fig, ax = plt.subplots(2, 2, figsize=(10.0, 9.0), sharey=False, squeeze=True)
+ax = ax.flatten()
+
+for i in range(4):
+    X, Y = np.meshgrid(range(n_sol+1), range(n_insol+1))
+    im = ax[i].pcolormesh(X, Y, datasets[i], cmap='viridis')
+
+    ax[i].set_xticks(range(n_sol))
+    ax[i].set_xticklabels([f"{v*1e6:.3f}" for v in rd_sol_list], rotation=45)
+    ax[i].set_yticks(range(n_insol))
+    ax[i].set_yticklabels([f"{v*1e6:.2f}" for v in rd_insol_list])
+
+    ax[i].set_xlabel("rd_sol")
+    ax[i].set_ylabel("rd_insol")
+    cbar = fig.colorbar(im, ax=ax[i])
+    cbar.set_label(titles[i])
+
+plt.tight_layout()
+out_png = "plots/rd_insol/sensitivity.pdf"
+plt.savefig(out_png, dpi=200, bbox_inches='tight')
+
+    
+
+
+

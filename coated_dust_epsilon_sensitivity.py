@@ -1,7 +1,3 @@
-"""
-Checking how insoluble component impacts condensation
-"""
-
 import sys
 sys.path.insert(0, "../")
 sys.path.insert(0, "./")
@@ -10,20 +6,26 @@ import numpy as np
 from parcel import parcel
 from scipy.io import netcdf
 import matplotlib.pyplot as plt
+import os
 from libcloudphxx import common
-plt.rcParams.update({'font.size': 16})
-from matplotlib.ticker import LogLocator, FuncFormatter, NullFormatter
-import json
+plt.style.use('seaborn-v0_8')
+plt.rcParams.update({
+    'font.size': 16,
+    'axes.labelsize': 16,
+    'axes.titlesize': 16,
+    'xtick.labelsize': 16,
+    'ytick.labelsize': 16,
+    'legend.fontsize': 16
+})
 
 w = 1.
-z_max = 500
+z_max = 400
 
 # polluted = '{"polluted": {"kappa": 1.28, "sol_frac": 1.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}'
 # pristine = '{"pristine": {"kappa": 1.28, "sol_frac": 1.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}'
 
 
 def run_scheme(epsilon, rd, outfile):
-
     
     if epsilon == 1.0:
         aerosol = '{"pristine": {"kappa": 1.28, "sol_frac": 1.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}'
@@ -37,7 +39,7 @@ def run_scheme(epsilon, rd, outfile):
         T_0=283,
         aerosol = aerosol,
         w = w,
-        sd_conc=10000,
+        sd_conc=1000,
         #sd_const_multi=1000000,
         #n_sd_max=1e7,
         dt=1,
@@ -79,113 +81,44 @@ def read(outfile):
 
 def make_profiles():
 
-    # rd_sol = 0.06e-6
-    # rd_insol_list = np.array([0.0, 0.1, 0.3, 1., 5., 8.]) * 1e-6
+    rd = 1e-6
+    epsilon_list = [0.0, 1e-3, 1e-2, 1e-1, 1.]
 
-    rd_insol = 1e-6
-    rd_sol_list = np.array([0.01, 0.03, 0.06, 0.1]) * 1e-6
+    out_png = "plots/rd_insol/different_epsilon.pdf"
 
-    out_png = "plots/rd_insol/sens"
-
-    fig, ax = plt.subplots(1, 4, figsize=(16.0, 15.0), sharey=True, squeeze=False)
+    fig, ax = plt.subplots(2, 2, figsize=(8.0, 9.0), sharey=True, squeeze=False)
+    ax = ax.flatten()
     
-    for rd_sol in rd_sol_list:
-        if rd_insol == 0.0:
-            rd = rd_sol
-            epsilon = 1.0
-        else:
-            rd = np.cbrt(rd_insol**3 + rd_sol**3)
-            epsilon = rd_sol**3 / rd**3
+    for epsilon in epsilon_list:
 
-        outfile = str(rd_sol)+".nc"
-        l = 'rd_sol = ' + str(rd_sol*1e6) + 'um'
+        l = '$\\epsilon$ = ' + str(round(epsilon, 3))
+
+        outfile = str(epsilon)+".nc"
         run_scheme(epsilon, rd, outfile)
         z, liq_mix_ratio, conc, mean_r, std_dev_area = read(outfile)
+        os.remove(outfile)
      
-        ax[0,0].plot(liq_mix_ratio, z, label=l)
-        ax[0,1].plot(conc, z, label=l)
-        ax[0,2].plot(mean_r, z, label=l)
-        ax[0,3].plot(std_dev_area, z, label=l)
+        ax[0].plot(liq_mix_ratio, z, label=l)
+        ax[1].plot(conc, z, label=l)
+        ax[2].plot(mean_r, z, label=l)
+        ax[3].plot(std_dev_area, z, label=l)
 
-    ax[0,0].set_ylabel('z [km]')
-    ax[0,0].set_xlabel('liquid mix. ratio [g/kg]')
-    ax[0,1].set_xlabel('droplet concentration [1/mg]')
-    ax[0,2].set_xlabel(f'droplet mean radius [$\mu$m]')
-    ax[0,3].set_xlabel(f'std. dev. of droplet area [$\mu$m$^2$]')
+    ax[0].set_ylabel('z [m]')
+    ax[2].set_ylabel('z [m]')
+    ax[0].set_xlabel('liquid mix. ratio [g/kg]')
+    ax[1].set_xlabel('droplet concentration [1/mg]')
+    ax[2].set_xlabel(f'droplet mean radius [$\mu$m]')
+    ax[3].set_xlabel(f'std. dev. of droplet area [$\mu$m$^2$]')
+    ax[0].set_xlim(0.1,0.6)
+    ax[1].set_xlim(40,65)
+    ax[2].set_xlim(5,15)
+    ax[3].set_xlim(40,90)
 
-    #ax[0,1].set_xlim(45,60)
-    ax[0,1].set_xlim(43,48)
+    handles, labels = ax[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.89),
+               ncol=2, frameon=False)
+    plt.tight_layout(rect=[0, 0, 1, 0.9])
 
-    handles, labels = ax[0,0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="center right", bbox_to_anchor=(0.8, 0.9))
-    fig.tight_layout(rect=[0, 0, 1, 0.95])
-    plt.savefig(out_png + ".pdf", dpi=200)
+    plt.savefig(out_png, dpi=200, bbox_inches='tight')
 
 make_profiles()
-
-
-
-# rd_sol_list = np.array([0.02]) * 1e-6
-# rd_insol_list = np.array([0.0, 0.1, 0.5]) * 1e-6
-
-# lwc_list = []
-# nc_list = []
-# rc_list = []
-# a_stdev_list = []
-# x_coords = []
-# y_coords = []
-
-# for rd_sol in rd_sol_list:
-#     for rd_insol in rd_insol_list:
-#         if rd_insol == 0.0:
-#             rd = rd_sol
-#             epsilon = 1.0
-#         else:
-#             rd = np.cbrt(rd_insol**3 + rd_sol**3)
-#             epsilon = rd_sol**3 / rd**3
-    
-#         outfile = "test.nc"
-
-#         run_scheme(epsilon, rd, outfile)
-#         liq_mix_ratio, conc, mean_r, std_dev_area = read(outfile)
-
-#         lwc_list.append(liq_mix_ratio)
-#         nc_list.append(conc)
-#         rc_list.append(mean_r)
-#         a_stdev_list.append(std_dev_area)
-#         x_coords.append(rd_sol)
-#         y_coords.append(rd_insol)
-
-# datasets = [lwc_list, nc_list, rc_list, a_stdev_list]
-# titles = [
-#     "liq mix ratio [g/kg]",
-#     "act conc [1/cm^3]",
-#     "mean radius [um]",
-#     "area stdev [um^2]"
-# ]
-
-# fig, ax = plt.subplots(2, 2, figsize=(16.0, 15.0), sharey=False, squeeze=True)
-# ax = ax.flatten()
-
-# for i in range(4):
-#     sc = ax[i].scatter(
-#         np.array(x_coords) * 1e6,
-#         np.array(y_coords) * 1e6,
-#         c=datasets[i],
-#         cmap='viridis',
-#         alpha=0.8
-#     )
-
-#     ax[i].set_xlabel("rd_sol")
-#     ax[i].set_ylabel("rd_insol")
-#     cbar = fig.colorbar(sc, ax=ax[i])
-#     cbar.set_label(titles[i])
-
-# plt.tight_layout()
-# plt.show()
-
-
-    
-
-
-

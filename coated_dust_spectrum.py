@@ -1,7 +1,3 @@
-"""
-Checking if insoluble component is important for condensation
-"""
-
 import sys
 sys.path.insert(0, "../")
 sys.path.insert(0, "./")
@@ -13,8 +9,8 @@ import matplotlib.pyplot as plt
 from libcloudphxx import common
 from matplotlib.ticker import FixedLocator, FuncFormatter, NullFormatter, LogLocator
 plt.style.use('seaborn-v0_8')
-plt.rcParams.update({'font.size': 16})
 plt.rcParams.update({
+    'font.size': 16,
     'axes.labelsize': 16,
     'axes.titlesize': 16,
     'xtick.labelsize': 16,
@@ -63,7 +59,6 @@ def run_scheme(aerosol, outfile):
         sstp_cond = 10,
         ice_switch = False,
         ice_nucl = False,
-        time_dep_ice_nucl = True,
         depo = False,
         backend = "gpu"
     )
