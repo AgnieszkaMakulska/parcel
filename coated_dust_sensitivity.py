@@ -126,7 +126,7 @@ titles = [
     f'std. dev. of droplet area [$\mu$m$^2$]'
 ]
 
-fig, ax = plt.subplots(2, 2, figsize=(10.0, 9.0), sharey=False, squeeze=True)
+fig, ax = plt.subplots(2, 2, figsize=(14.0, 12.0), sharey=False, squeeze=True)
 ax = ax.flatten()
 
 for i in range(4):
@@ -134,12 +134,12 @@ for i in range(4):
     im = ax[i].pcolormesh(X, Y, datasets[i], cmap='viridis')
 
     ax[i].set_xticks(range(n_sol))
-    ax[i].set_xticklabels([f"{v*1e6:.3f}" for v in rd_sol_list], rotation=45)
+    ax[i].set_xticklabels([f"{v*1e6:.2f}" for v in rd_sol_list], rotation=45)
     ax[i].set_yticks(range(n_insol))
-    ax[i].set_yticklabels([f"{v*1e6:.2f}" for v in rd_insol_list])
+    ax[i].set_yticklabels([f"{v*1e6:.1f}" for v in rd_insol_list])
 
-    ax[i].set_xlabel("rd_sol")
-    ax[i].set_ylabel("rd_insol")
+    ax[i].set_xlabel("$r_{sol}$ [$\\mu$m]")
+    ax[i].set_ylabel("$r_{insol}$ [$\\mu$m]")
     cbar = fig.colorbar(im, ax=ax[i])
     cbar.set_label(titles[i])
 
