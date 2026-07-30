@@ -20,7 +20,7 @@ plt.rcParams.update({
 
 from coated_dust import aerosol_spec, run_scheme, read_profiles
 
-aerosol_str = "pristine"
+aerosol_str = "polluted"
 out_png = "plots/rd_insol/different_rd_insol_" + aerosol_str +".pdf"
 
 fig, ax = plt.subplots(2, 2, figsize=(8.0, 9.0), sharey=True, squeeze=False)
@@ -42,7 +42,7 @@ for rd_insol in rd_insol_list:
     outfile = str(rd_insol)+".nc"
     run_scheme(aerosol, outfile)
     z, liq_mix_ratio, conc, mean_r, std_dev_area = read_profiles(outfile)
-    os.remove(outfile)
+    #os.remove(outfile)
     
     ax[0].plot(liq_mix_ratio, z, label=l)
     ax[1].plot(conc, z, label=l)
@@ -56,9 +56,15 @@ ax[1].set_xlabel('droplet concentration [1/mg]')
 ax[2].set_xlabel(f'droplet mean radius [$\mu$m]')
 ax[3].set_xlabel(f'std. dev. of droplet area [$\mu$m$^2$]')
 ax[0].set_xlim(0.1,0.6)
-ax[1].set_xlim(40,65)
-ax[2].set_xlim(5,15)
-ax[3].set_xlim(40,90)
+if aerosol_str == "pristine":
+    ax[1].set_xlim(40,65)
+    ax[2].set_xlim(5,15)
+    ax[3].set_xlim(40,90)
+elif aerosol_str == "polluted":
+    ax[1].set_xlim(250,410)
+    ax[2].set_xlim(4,8)
+    ax[3].set_xlim(25,38)
+
 
 handles, labels = ax[0].get_legend_handles_labels()
 fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.89),

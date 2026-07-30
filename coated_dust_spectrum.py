@@ -20,7 +20,7 @@ plt.rcParams.update({
 
 from coated_dust import aerosol_spec, run_scheme, read_profiles, read_distr
 
-aerosol_str = "pristine"
+aerosol_str = "polluted"
 rd_insol = 1e-6
 rd_sol = 0.02e-6
 rd = np.cbrt(rd_insol**3 + rd_sol**3)
@@ -74,7 +74,7 @@ def make_profiles():
 
 def make_spectrum():
 
-    out_png = "plots/rd_insol/single_rd_spectrum" + aerosol_str + ".pdf"
+    out_png = "plots/rd_insol/single_rd_spectrum_" + aerosol_str + ".pdf"
     fig, ax = plt.subplots(1, 2, figsize=(12.0, 5.0), sharey=True, squeeze=False)
     ax = ax.flatten()
 
@@ -89,7 +89,6 @@ def make_spectrum():
     
     ax[0].set_title('Initial size distribution')
     ax[1].set_title('Size distribution at 400 m')
-    ax[1].set_xlim(12.5,17)
     ax[0].set_xscale('log')
     ax[1].set_xscale('log')
     ax[0].set_yscale('log')
@@ -97,6 +96,11 @@ def make_spectrum():
     ax[0].set_ylabel('droplet concentration [1/mg]')        
     ax[0].set_xlabel(f'droplet radius [$\mu$m]')
     ax[1].set_xlabel(f'droplet radius [$\mu$m]')
+
+    if aerosol_str == "pristine":
+        ax[1].set_xlim(12.5,17)
+    elif aerosol_str == "polluted":
+        ax[1].set_xlim(6,12)
     
     handles, labels = ax[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.89),

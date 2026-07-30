@@ -24,8 +24,8 @@ aerosol_str = "pristine"
 out_png = "plots/rd_insol/sensitivity_" + aerosol_str + ".pdf"
 
 
-rd_sol_list = np.linspace(0.01, 0.1, 5) * 1e-6
-rd_insol_list = np.linspace(0.1, 10, 5) * 1e-6
+rd_sol_list = np.linspace(0.0, 0.5, 10) * 1e-6
+rd_insol_list = np.linspace(0.0, 10, 10) * 1e-6
 
 lwc_list = []
 nc_list = []
@@ -47,7 +47,7 @@ for rd_sol in rd_sol_list:
         outfile = outfile = str(rd_insol)+str(rd_sol)+".nc"
         run_scheme(aerosol, outfile)
         z, liq_mix_ratio, conc, mean_r, std_dev_area = read_profiles(outfile)
-        os.remove(outfile)
+        #os.remove(outfile)
 
         lwc_list.append(liq_mix_ratio[-1])
         nc_list.append(conc[-1])
