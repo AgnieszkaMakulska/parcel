@@ -37,9 +37,9 @@ for epsilon in epsilon_list:
     aerosol = aerosol_spec(aerosol_str, epsilon, rd)
 
     outfile = str(epsilon)+".nc"
-    run_scheme(aerosol, outfile)
+    run_scheme(aerosol, outfile, outfreq = 5)
     z, liq_mix_ratio, conc, mean_r, std_dev_area = read_profiles(outfile)
-    #os.remove(outfile)
+    os.remove(outfile)
     
     ax[0].plot(liq_mix_ratio, z, label=l)
     ax[1].plot(conc, z, label=l)

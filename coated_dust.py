@@ -25,25 +25,30 @@ def aerosol_spec(aerosol_str, epsilon, rd = None):
     return aerosol
 
 
-def run_scheme(aerosol, outfile):
+def run_scheme(aerosol, outfile, outfreq, spec=False):
+
+    if spec == False:
+        out_bin = '{"liq": {"rght": 1, "moms": [0,1,2,3,4], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-20}}'
+    else:
+        out_bin = '{"liq": {"rght": 1, "moms": [0,1,2,3,4], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-20},' \
+            '"initial_spec": {"rght": 3e-6, "moms": [0], "drwt": "wet", "nbin": 100, "lnli": "log", "left": 0.01e-6},' \
+            '"spec": {"rght": 30e-6, "moms": [0], "drwt": "wet", "nbin": 1000, "lnli": "log", "left": 1e-6}}'
+
     args = dict(
         p_0=90000,
         RH_0=0.97,
         T_0=283,
         aerosol = aerosol,
         w = 1,
-        sd_conc=1000,
+        sd_conc = 1000,
         #sd_const_multi=1000000,
         #n_sd_max=1e7,
         dt = 1,
         z_max = 400,
         outfile = outfile,
-        outfreq = 1,
+        outfreq = outfreq,
         scheme = "lgrngn",
-        out_bin = '{"liq": {"rght": 1, "moms": [0,1,2,3,4], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-20},' \
-                '"initial_spec": {"rght": 3e-6, "moms": [0], "drwt": "wet", "nbin": 100, "lnli": "log", "left": 0.01e-6},' \
-                '"spec": {"rght": 30e-6, "moms": [0], "drwt": "wet", "nbin": 1000, "lnli": "log", "left": 1e-6}}',
-
+        out_bin = out_bin,
         sstp_cond = 10,
         ice_switch = False,
         ice_nucl = False,

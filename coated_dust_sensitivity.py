@@ -45,9 +45,9 @@ for rd_sol in rd_sol_list:
             aerosol = aerosol_spec(aerosol_str, epsilon, rd)
     
         outfile = outfile = str(rd_insol)+str(rd_sol)+".nc"
-        run_scheme(aerosol, outfile)
+        run_scheme(aerosol, outfile, outfreq = 400)
         z, liq_mix_ratio, conc, mean_r, std_dev_area = read_profiles(outfile)
-        #os.remove(outfile)
+        os.remove(outfile)
 
         lwc_list.append(liq_mix_ratio[-1])
         nc_list.append(conc[-1])
@@ -84,10 +84,13 @@ for i in range(4):
     ax[i].set_yticks(range(n_insol))
     ax[i].set_yticklabels([f"{v*1e6:.1f}" for v in rd_insol_list])
 
-    ax[i].set_xlabel("$r_{sol}$ [$\\mu$m]")
-    ax[i].set_ylabel("$r_{insol}$ [$\\mu$m]")
     cbar = fig.colorbar(im, ax=ax[i])
-    cbar.set_label(titles[i])
+    ax[i].set_title(titles[i])
+
+for i in (2,3):
+    ax[i].set_xlabel("$r_{sol}$ [$\\mu$m]")
+for i in (0,2):
+    ax[i].set_ylabel("$r_{insol}$ [$\\mu$m]")
 
 plt.tight_layout()
 plt.savefig(out_png, dpi=200, bbox_inches='tight')

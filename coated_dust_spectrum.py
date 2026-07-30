@@ -121,7 +121,7 @@ def make_spectrum():
 
 for aerosol in [sol, mix]:
     outfile = "sol.nc" if aerosol == sol else "mix.nc"
-    run_scheme(aerosol, outfile)
+    run_scheme(aerosol, outfile, outfreq = 5, spec = True)
 
 make_profiles()
 make_spectrum()
