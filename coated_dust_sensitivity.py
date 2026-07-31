@@ -20,7 +20,7 @@ plt.rcParams.update({
 
 from coated_dust import aerosol_spec, run_scheme, read_profiles
 
-aerosol_str = "pristine"
+aerosol_str = "polluted"
 out_png = "plots/rd_insol/sensitivity_" + aerosol_str + ".pdf"
 
 
@@ -77,7 +77,7 @@ ax = ax.flatten()
 
 for i in range(4):
     X, Y = np.meshgrid(range(n_sol+1), range(n_insol+1))
-    im = ax[i].pcolormesh(X, Y, datasets[i], cmap='viridis')
+    im = ax[i].pcolormesh(X, Y, datasets[i], cmap='summer')
 
     ax[i].set_xticks(range(n_sol))
     ax[i].set_xticklabels([f"{v*1e6:.2f}" for v in rd_sol_list], rotation=45)
