@@ -20,7 +20,7 @@ plt.rcParams.update({
 
 from coated_dust import aerosol_spec, run_scheme, read_profiles
 
-aerosol_str = "polluted"
+aerosol_str = "pristine"
 out_png = "plots/rd_insol/different_epsilon_" + aerosol_str + ".pdf"
 
 rd = 1e-6
@@ -38,20 +38,20 @@ for epsilon in epsilon_list:
 
     outfile = str(epsilon)+".nc"
     run_scheme(aerosol, outfile, outfreq = 5)
-    z, liq_mix_ratio, conc, mean_r, std_dev_area = read_profiles(outfile)
+    z, liq_mix_ratio, conc, mean_r, std_dev_r = read_profiles(outfile)
     os.remove(outfile)
     
     ax[0].plot(liq_mix_ratio, z, label=l)
     ax[1].plot(conc, z, label=l)
     ax[2].plot(mean_r, z, label=l)
-    ax[3].plot(std_dev_area, z, label=l)
+    ax[3].plot(std_dev_r, z, label=l)
 
 ax[0].set_ylabel('z [m]')
 ax[2].set_ylabel('z [m]')
 ax[0].set_xlabel('liquid mix. ratio [g/kg]')
 ax[1].set_xlabel('droplet concentration [1/mg]')
 ax[2].set_xlabel(f'droplet mean radius [$\mu$m]')
-ax[3].set_xlabel(f'std. dev. of droplet area [$\mu$m$^2$]')
+ax[3].set_xlabel(f'std. dev. of droplet radius [$\mu$m]')
 ax[0].set_xlim(0.1,0.6)
 if aerosol_str == "pristine":
     ax[1].set_xlim(40,65)

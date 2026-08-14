@@ -73,10 +73,10 @@ def read_profiles(outfile):
         liq_mix_ratio = liq_m3 * 4/3 * np.pi * common.rho_w
         conc = act_m0
         mean_r = np.where(act_m0 > 0, act_m1 / act_m0, 0)
-        std_dev_area = np.sqrt(np.where(act_m0 > 0, 
-                        act_m4 / act_m0 - (act_m2 / act_m0)**2, 
-                        0)) * 4 * np.pi
-    return z, liq_mix_ratio*1e3, conc/1e6, mean_r*1e6, std_dev_area*1e12
+        std_dev_r = np.sqrt(np.where(act_m0 > 0, 
+                        act_m2 / act_m0 - (act_m1 / act_m0)**2, 
+                        0))
+    return z, liq_mix_ratio*1e3, conc/1e6, mean_r*1e6, std_dev_r*1e6
 
 def read_distr(outfile):
     with netcdf.netcdf_file(outfile, 'r') as f:

@@ -20,7 +20,7 @@ plt.rcParams.update({
 
 from coated_dust import aerosol_spec, run_scheme, read_profiles
 
-aerosol_str = "polluted"
+aerosol_str = "pristine"
 out_png = "plots/rd_insol/sensitivity_" + aerosol_str + ".pdf"
 
 
@@ -30,7 +30,7 @@ rd_insol_list = np.linspace(0.0, 10, 10) * 1e-6
 lwc_list = []
 nc_list = []
 rc_list = []
-a_stdev_list = []
+r_stdev_list = []
 x_coords = []
 y_coords = []
 
@@ -46,13 +46,13 @@ for rd_sol in rd_sol_list:
     
         outfile = outfile = str(rd_insol)+str(rd_sol)+".nc"
         run_scheme(aerosol, outfile, outfreq = 400)
-        z, liq_mix_ratio, conc, mean_r, std_dev_area = read_profiles(outfile)
+        z, liq_mix_ratio, conc, mean_r, std_dev_r = read_profiles(outfile)
         os.remove(outfile)
 
         lwc_list.append(liq_mix_ratio[-1])
         nc_list.append(conc[-1])
         rc_list.append(mean_r[-1])
-        a_stdev_list.append(std_dev_area[-1])
+        r_stdev_list.append(std_dev_r[-1])
         x_coords.append(rd_sol)
         y_coords.append(rd_insol)
 
@@ -64,12 +64,12 @@ def to_grid(flat_list):
     return arr
 
 
-datasets = [to_grid(lwc_list), to_grid(nc_list), to_grid(rc_list), to_grid(a_stdev_list)]
+datasets = [to_grid(lwc_list), to_grid(nc_list), to_grid(rc_list), to_grid(r_stdev_list)]
 titles = [
     'liquid mix. ratio [g/kg]',
     'droplet concentration [1/mg]',
     f'droplet mean radius [$\mu$m]',
-    f'std. dev. of droplet area [$\mu$m$^2$]'
+    f'std. dev. of droplet radius [$\mu$m]'
 ]
 
 fig, ax = plt.subplots(2, 2, figsize=(14.0, 12.0), sharey=False, squeeze=True)
