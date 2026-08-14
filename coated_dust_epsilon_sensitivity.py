@@ -24,7 +24,7 @@ aerosol_str = "pristine"
 out_png = "plots/rd_insol/different_epsilon_" + aerosol_str + ".pdf"
 
 rd = 1e-6
-epsilon_list = [0.0, 1e-3, 1e-2, 1e-1, 1.]
+epsilon_list = [0.0, 1e-3, 1e-2, 1e-1, 0.5, 1.]
 
 
 fig, ax = plt.subplots(2, 2, figsize=(8.0, 9.0), sharey=True, squeeze=False)

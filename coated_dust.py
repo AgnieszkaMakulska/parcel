@@ -8,20 +8,16 @@ from scipy.io import netcdf
 from libcloudphxx import common
 
 
-def aerosol_spec(aerosol_str, epsilon, rd = None):
+def aerosol_spec(aerosol_str, epsilon, rd):
 
     if epsilon == 1.0:
-        if aerosol_str == "pristine":
-            aerosol = '{"pristine": {"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}'
-        elif aerosol_str == "polluted":
-            aerosol = '{"polluted": {"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}'
-    else:
-        if aerosol_str == "pristine":
-            aerosol = f'{{"pristine":{{"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}, \
-                "mixed": {{"kappa": 1.28, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.4], "n_tot": [1.0e6]}} }}'
-        elif aerosol_str == "polluted":
-            aerosol = f'{{"polluted":{{"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}, \
-                "mixed": {{"kappa": 1.28, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.4], "n_tot": [1.0e6]}} }}'
+        epsilon = 0.999
+    if aerosol_str == "pristine":
+        aerosol = f'{{"pristine":{{"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}, \
+            "mixed": {{"kappa": 1.28, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.4], "n_tot": [1.0e6]}} }}'
+    elif aerosol_str == "polluted":
+        aerosol = f'{{"polluted":{{"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}, \
+            "mixed": {{"kappa": 1.28, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.4], "n_tot": [1.0e6]}} }}'
     return aerosol
 
 
@@ -53,7 +49,7 @@ def run_scheme(aerosol, outfile, outfreq, spec=False):
         ice_switch = False,
         ice_nucl = False,
         depo = False,
-        backend = "gpu"
+        backend = "OpenMP"
     )
     parcel(**args)
 
