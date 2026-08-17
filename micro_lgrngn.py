@@ -126,6 +126,11 @@ def _micro_step(micro, state, info, opts):
   state["act_m2"] = mom2
 
   micro.diag_rw_ge_rc()
+  mom3 = micro.diag_wet_mom(3)
+  mom3 = np.frombuffer(micro.outbuf())[0]
+  state["act_m3"] = mom3
+
+  micro.diag_rw_ge_rc()
   mom4 = micro.diag_wet_mom(4)
   mom4 = np.frombuffer(micro.outbuf())[0]
   state["act_m4"] = mom4

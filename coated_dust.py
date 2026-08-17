@@ -8,17 +8,27 @@ from scipy.io import netcdf
 from libcloudphxx import common
 
 
-def aerosol_spec(aerosol_str, epsilon, rd):
+def mixed_aerosol(aerosol_str, epsilon, rd):
 
     if epsilon == 1.0:
-        epsilon = 0.999
+        epsilon = 0.9999999
     if aerosol_str == "pristine":
-        aerosol = f'{{"pristine":{{"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}, \
+        return f'{{"pristine":{{"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}, \
             "mixed": {{"kappa": 0.61, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.4], "n_tot": [1.0e6]}} }}'
     elif aerosol_str == "polluted":
-        aerosol = f'{{"polluted":{{"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}, \
+        return f'{{"polluted":{{"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}, \
             "mixed": {{"kappa": 0.61, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.4], "n_tot": [1.0e6]}} }}'
-    return aerosol
+    else:
+        return None
+
+def soluble_aerosol(aerosol_str):
+    if aerosol_str == "pristine":
+        return '{"pristine": {"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}'
+    elif aerosol_str == "polluted":
+        return '{"polluted": {"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}'
+    else:
+        return None
+
 
 
 def run_scheme(aerosol, outfile, outfreq, spec=False):
@@ -27,7 +37,7 @@ def run_scheme(aerosol, outfile, outfreq, spec=False):
         out_bin = '{"liq": {"rght": 1, "moms": [0,1,2,3,4], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-20}}'
     else:
         out_bin = '{"liq": {"rght": 1, "moms": [0,1,2,3,4], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-20},' \
-            '"initial_spec": {"rght": 3e-6, "moms": [0], "drwt": "wet", "nbin": 100, "lnli": "log", "left": 0.01e-6},' \
+            '"initial_spec": {"rght": 8e-6, "moms": [0], "drwt": "wet", "nbin": 100, "lnli": "log", "left": 0.01e-6},' \
             '"spec": {"rght": 30e-6, "moms": [0], "drwt": "wet", "nbin": 1000, "lnli": "log", "left": 1e-6}}'
 
     args = dict(
@@ -60,13 +70,14 @@ def read_profiles(outfile):
         act_m0 = np.array(f.variables['act_m0'][:]).squeeze()
         act_m1 = np.array(f.variables['act_m1'][:]).squeeze()
         act_m2 = np.array(f.variables['act_m2'][:]).squeeze()
+        act_m3 = np.array(f.variables['act_m3'][:]).squeeze()
         act_m4 = np.array(f.variables['act_m4'][:]).squeeze()
         liq_m0 = np.array(f.variables['liq_m0'][:]).squeeze()
         liq_m1 = np.array(f.variables['liq_m1'][:]).squeeze()
         liq_m2 = np.array(f.variables['liq_m2'][:]).squeeze()
         liq_m3 = np.array(f.variables['liq_m3'][:]).squeeze()
         liq_m4 = np.array(f.variables['liq_m4'][:]).squeeze()
-        liq_mix_ratio = liq_m3 * 4/3 * np.pi * common.rho_w
+        liq_mix_ratio = act_m3 * 4/3 * np.pi * common.rho_w
         conc = act_m0
         mean_r = np.where(act_m0 > 0, act_m1 / act_m0, 0)
         std_dev_r = np.sqrt(np.where(act_m0 > 0, 
