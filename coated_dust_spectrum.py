@@ -1,10 +1,10 @@
 import coated_dust as cd
-
+import sys
 import numpy as np
 import os
 import matplotlib.pyplot as plt
 plt.style.use('seaborn-v0_8')
-from matplotlib.ticker import FixedLocator, FuncFormatter, NullFormatter, LogLocator
+from matplotlib.ticker import FixedLocator, FuncFormatter, NullFormatter
 plt.rcParams.update({
     'font.size': 16,
     'axes.labelsize': 16,
@@ -14,21 +14,26 @@ plt.rcParams.update({
     'legend.fontsize': 16
 })
 
-aerosol_str = "pristine"
+if "polluted" in sys.argv:
+    aerosol_str = "polluted"
+else:
+    aerosol_str = "pristine"
+
 rd = 0.5e-6
-epsilon = 1e-5
+epsilon = 1e-3
+z_distr = 80
 
 mix = cd.mixed_aerosol(aerosol_str, epsilon, rd)
 sol = cd.soluble_aerosol(aerosol_str)
 
-out_png = "plots/rd_insol/single_rd_spectrum_" + aerosol_str + ".pdf"
+out_png = "plots/rd_insol/spectrum_" + aerosol_str + ".pdf"
 fig, ax = plt.subplots(1, 2, figsize=(12.0, 5.0), sharey=True, squeeze=False)
 ax = ax.flatten()
 
 for aerosol in [sol, mix]:
     outfile = "sol.nc" if aerosol == sol else "mix.nc"
     cd.run_scheme(aerosol, outfile, outfreq = 5, spec = True)
-    distr1, radii, bin_widths, initial_distr, init_radii, init_bin_widths = cd.read_distr(outfile)
+    distr1, radii, bin_widths, initial_distr, init_radii, init_bin_widths = cd.read_distr(outfile, z_distr)
     os.remove(outfile)
 
     l = "ammonium sulfate" if aerosol==sol else "ammonium sulfate + dust"
@@ -37,7 +42,7 @@ for aerosol in [sol, mix]:
     ax[1].bar(radii, distr1, color=c, edgecolor=c, width=bin_widths, alpha=0.4, label = l, linewidth=2)
 
 ax[0].set_title('Initial size distribution')
-ax[1].set_title('Size distribution at 400 m')
+ax[1].set_title('Size distribution at '+str(z_distr)+' m')
 ax[0].set_xscale('log')
 ax[1].set_xscale('log')
 ax[0].set_yscale('log')
@@ -46,10 +51,10 @@ ax[0].set_ylabel('droplet concentration [1/mg]')
 ax[0].set_xlabel('droplet radius [$\\mu$m]')
 ax[1].set_xlabel('droplet radius [$\\mu$m]')
 
-if aerosol_str == "pristine":
-    ax[1].set_xlim(12.5,17)
-elif aerosol_str == "polluted":
-    ax[1].set_xlim(6,12)
+# if aerosol_str == "pristine":
+#     ax[1].set_xlim(12.5,17)
+# elif aerosol_str == "polluted":
+#     ax[1].set_xlim(6,12)
 
 handles, labels = ax[0].get_legend_handles_labels()
 fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.89),

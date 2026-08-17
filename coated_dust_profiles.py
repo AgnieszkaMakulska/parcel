@@ -1,5 +1,5 @@
 import coated_dust as cd
-
+import sys
 import os
 import matplotlib.pyplot as plt
 plt.style.use('seaborn-v0_8')
@@ -14,11 +14,15 @@ plt.rcParams.update({
 })
 
 
-aerosol_str = "pristine"
-rd = 3e-6
+if "polluted" in sys.argv:
+    aerosol_str = "polluted"
+else:
+    aerosol_str = "pristine"
+
+rd = 0.5e-6
 epsilon_list = [1e-5, 1e-2, 0.1, 1.]
 
-out_png = "plots/rd_insol/different_epsilon_" + aerosol_str + ".pdf"
+out_png = "plots/rd_insol/profiles_" + aerosol_str + ".pdf"
 fig, ax = plt.subplots(2, 2, figsize=(8.0, 9.0), sharey=True, squeeze=False)
 ax = ax.flatten()
 
@@ -54,12 +58,12 @@ ax[1].set_xlabel('droplet concentration [1/mg]')
 ax[2].set_xlabel('droplet mean radius [$\\mu$m]')
 ax[3].set_xlabel('std. dev. of droplet radius [$\\mu$m]')
 #ax[0].set_xlim(0.05,0.6)
-if aerosol_str == "pristine":
-    ax[1].set_xlim(34,53)
-    ax[2].set_xlim(7,16)
-elif aerosol_str == "polluted":
-    ax[1].set_xlim(230,370)
-    ax[2].set_xlim(2,9)
+#if aerosol_str == "pristine":
+    #ax[1].set_xlim(34,53)
+    #ax[2].set_xlim(7,16)
+#elif aerosol_str == "polluted":
+    #ax[1].set_xlim(230,370)
+    #ax[2].set_xlim(2,9)
 
 handles, labels = ax[0].get_legend_handles_labels()
 fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.89),

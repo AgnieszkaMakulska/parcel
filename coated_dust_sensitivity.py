@@ -1,5 +1,5 @@
 import coated_dust as cd
-
+import sys
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,7 +13,11 @@ plt.rcParams.update({
     'legend.fontsize': 16
 })
 
-aerosol_str = "pristine"
+if "polluted" in sys.argv:
+    aerosol_str = "polluted"
+else:
+    aerosol_str = "pristine"
+
 rd_list = np.linspace(0.01, 5, 10) * 1e-6
 eps_list = np.linspace(0.0, 1., 10)
 
@@ -21,11 +25,10 @@ lwc_list = []
 nc_list = []
 rc_list = []
 r_stdev_list = []
-x_coords = []
-y_coords = []
 
 for rd in rd_list:
     for epsilon in eps_list:
+        print(rd,epsilon)
 
         aerosol = cd.mixed_aerosol(aerosol_str, epsilon, rd)
         outfile = str(rd)+str(epsilon)+".nc"
@@ -37,8 +40,6 @@ for rd in rd_list:
         nc_list.append(conc[-1])
         rc_list.append(mean_r[-1])
         r_stdev_list.append(std_dev_r[-1])
-        x_coords.append(rd)
-        y_coords.append(epsilon)
 
 n_rd = len(rd_list)
 n_eps = len(eps_list)
@@ -75,7 +76,7 @@ for i in range(4):
 for i in range(4):
     ax[i].set_xlabel("$r_d$ [$\\mu$m]")
 for i in range(4):
-    ax[i].set_ylabel("$\epsilon$")
+    ax[i].set_ylabel("$\\epsilon$")
 
 plt.tight_layout()
 plt.savefig(out_png, dpi=200, bbox_inches='tight')

@@ -14,12 +14,12 @@ def mixed_aerosol(aerosol_str, epsilon, rd):
         epsilon = 0.9999999
     if aerosol_str == "pristine":
         return f'{{"pristine":{{"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}, \
-            "mixed": {{"kappa": 0.61, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.4], "n_tot": [1.0e6]}} }}'
+            "mixed": {{"kappa": 0.61, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.1], "n_tot": [1.0e6]}} }}'
     elif aerosol_str == "polluted":
         return f'{{"polluted":{{"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}, \
-            "mixed": {{"kappa": 0.61, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.4], "n_tot": [1.0e6]}} }}'
+            "mixed": {{"kappa": 0.61, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.1], "n_tot": [1.0e6]}} }}'
     else:
-        return None
+        raise ValueError('unknown aerosol spec')
 
 def soluble_aerosol(aerosol_str):
     if aerosol_str == "pristine":
@@ -27,17 +27,18 @@ def soluble_aerosol(aerosol_str):
     elif aerosol_str == "polluted":
         return '{"polluted": {"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}'
     else:
-        return None
+        raise ValueError('unknown aerosol spec')
 
 
 
 def run_scheme(aerosol, outfile, outfreq, spec=False):
 
     if spec == False:
-        out_bin = '{"liq": {"rght": 1, "moms": [0,1,2,3,4], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-20}}'
+        out_bin = '{"liq": {"rght": 1, "moms": [0,1,2,3,4], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 1e-20},' \
+        '"aerosol": {"rght": 1, "moms": [0], "drwt": "dry", "nbin": 1, "lnli": "lin", "left": 1e-20},' \
+        '"cloud": {"rght": 1, "moms": [0,1,2,3,4], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 1e-6}}'
     else:
-        out_bin = '{"liq": {"rght": 1, "moms": [0,1,2,3,4], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-20},' \
-            '"initial_spec": {"rght": 8e-6, "moms": [0], "drwt": "wet", "nbin": 100, "lnli": "log", "left": 0.01e-6},' \
+        out_bin = '{"initial_spec": {"rght": 8e-6, "moms": [0], "drwt": "wet", "nbin": 100, "lnli": "log", "left": 0.01e-6},' \
             '"spec": {"rght": 30e-6, "moms": [0], "drwt": "wet", "nbin": 1000, "lnli": "log", "left": 1e-6}}'
 
     args = dict(
@@ -67,25 +68,21 @@ def run_scheme(aerosol, outfile, outfreq, spec=False):
 def read_profiles(outfile):
     with netcdf.netcdf_file(outfile, 'r') as f:
         z = np.array(f.variables['z'][:]).squeeze()
-        act_m0 = np.array(f.variables['act_m0'][:]).squeeze()
-        act_m1 = np.array(f.variables['act_m1'][:]).squeeze()
-        act_m2 = np.array(f.variables['act_m2'][:]).squeeze()
-        act_m3 = np.array(f.variables['act_m3'][:]).squeeze()
-        act_m4 = np.array(f.variables['act_m4'][:]).squeeze()
-        liq_m0 = np.array(f.variables['liq_m0'][:]).squeeze()
-        liq_m1 = np.array(f.variables['liq_m1'][:]).squeeze()
-        liq_m2 = np.array(f.variables['liq_m2'][:]).squeeze()
-        liq_m3 = np.array(f.variables['liq_m3'][:]).squeeze()
-        liq_m4 = np.array(f.variables['liq_m4'][:]).squeeze()
-        liq_mix_ratio = act_m3 * 4/3 * np.pi * common.rho_w
-        conc = act_m0
-        mean_r = np.where(act_m0 > 0, act_m1 / act_m0, 0)
-        std_dev_r = np.sqrt(np.where(act_m0 > 0, 
-                        act_m2 / act_m0 - (act_m1 / act_m0)**2, 
-                        0))
+        cloud_m0 = np.array(f.variables['liq_m0'][:]).squeeze()
+        cloud_m1 = np.array(f.variables['liq_m1'][:]).squeeze()
+        cloud_m2 = np.array(f.variables['liq_m2'][:]).squeeze()
+        cloud_m3 = np.array(f.variables['liq_m3'][:]).squeeze()
+        cloud_m4 = np.array(f.variables['liq_m4'][:]).squeeze()
+        liq_mix_ratio = cloud_m3 * 4/3 * np.pi * common.rho_w
+        conc = cloud_m0 
+        mean_r = np.where(cloud_m0 > 0, cloud_m1 / cloud_m0, 0)
+        variance_r = np.where(cloud_m0 > 0,
+                        cloud_m2 / cloud_m0 - (cloud_m1 / cloud_m0)**2, 
+                        0)
+        std_dev_r = np.sqrt(np.maximum(variance_r, 0.0))
     return z, liq_mix_ratio*1e3, conc/1e6, mean_r*1e6, std_dev_r*1e6
 
-def read_distr(outfile):
+def read_distr(outfile, z_distr):
     with netcdf.netcdf_file(outfile, 'r') as f:
         z = np.array(f.variables['z'][:]).squeeze()
         distr = np.array(f.variables['spec_m0'][:]).squeeze()
@@ -95,5 +92,5 @@ def read_distr(outfile):
         init_radii = np.array(f.variables['initial_spec_r_wet'][:]).squeeze()
         init_bin_widths = np.array(f.variables['initial_spec_dr_wet'][:]).squeeze()
         initial_distr = init_distr[np.argmin(np.abs(z))]
-        distr1 = distr[np.argmin(np.abs(z - 400))]
+        distr1 = distr[np.argmin(np.abs(z - z_distr))]
     return distr1/1e6, radii*1e6, bin_widths*1e6, initial_distr/1e6, init_radii*1e6, init_bin_widths*1e6
