@@ -63,8 +63,8 @@ datasets = [to_grid(lwc_list), to_grid(nc_list), to_grid(rc_list), to_grid(r_std
 titles = [
     'liquid mix. ratio [g/kg]',
     'droplet concentration [1/mg]',
-    f'droplet mean radius [$\mu$m]',
-    f'std. dev. of droplet radius [$\mu$m]'
+    f'droplet mean radius [$\\mu$m]',
+    f'std. dev. of droplet radius [$\\mu$m]'
 ]
 
 fig, ax = plt.subplots(2, 2, figsize=(14.0, 12.0), sharey=False, squeeze=True)

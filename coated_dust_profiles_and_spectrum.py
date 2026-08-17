@@ -61,8 +61,8 @@ def make_profiles():
     ax[2].set_ylabel('z [m]')
     ax[0].set_xlabel('liquid mix. ratio [g/kg]')
     ax[1].set_xlabel('droplet concentration [1/mg]')
-    ax[2].set_xlabel(f'droplet mean radius [$\mu$m]')
-    ax[3].set_xlabel(f'std. dev. of droplet radius [$\mu$m]')
+    ax[2].set_xlabel(f'droplet mean radius [$\\mu$m]')
+    ax[3].set_xlabel(f'std. dev. of droplet radius [$\\mu$m]')
 
     handles, labels = ax[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.94),
