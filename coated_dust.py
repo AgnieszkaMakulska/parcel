@@ -14,10 +14,10 @@ def mixed_aerosol(aerosol_str, epsilon, rd):
         epsilon = 0.9999999
     if aerosol_str == "pristine":
         return f'{{"pristine":{{"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}, \
-            "mixed": {{"kappa": 1.28, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.1], "n_tot": [1.0e6]}} }}'
+            "mixed": {{"kappa": 0.61, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.2], "n_tot": [5.0e6]}} }}'
     elif aerosol_str == "polluted":
         return f'{{"polluted":{{"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}, \
-            "mixed": {{"kappa": 0.61, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.1], "n_tot": [1.0e6]}} }}'
+            "mixed": {{"kappa": 0.61, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.2], "n_tot": [5.0e6]}} }}'
     else:
         raise ValueError('unknown aerosol spec')
 
@@ -70,11 +70,11 @@ def run_scheme(aerosol, outfile, outfreq, spec=False):
 def read_profiles(outfile):
     with netcdf.netcdf_file(outfile, 'r') as f:
         z = np.array(f.variables['z'][:]).squeeze()
-        cloud_m0 = np.array(f.variables['cloud_m0'][:]).squeeze()
-        cloud_m1 = np.array(f.variables['cloud_m1'][:]).squeeze()
-        cloud_m2 = np.array(f.variables['cloud_m2'][:]).squeeze()
-        cloud_m3 = np.array(f.variables['cloud_m3'][:]).squeeze()
-        cloud_m4 = np.array(f.variables['cloud_m4'][:]).squeeze()
+        cloud_m0 = np.array(f.variables['act_m0'][:]).squeeze()
+        cloud_m1 = np.array(f.variables['act_m1'][:]).squeeze()
+        cloud_m2 = np.array(f.variables['act_m2'][:]).squeeze()
+        cloud_m3 = np.array(f.variables['act_m3'][:]).squeeze()
+        cloud_m4 = np.array(f.variables['act_m4'][:]).squeeze()
         liq_mix_ratio = cloud_m3 * 4/3 * np.pi * common.rho_w
         conc = cloud_m0 
         mean_r = np.where(cloud_m0 > 0, cloud_m1 / cloud_m0, 0)

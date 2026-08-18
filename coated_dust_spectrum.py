@@ -19,9 +19,9 @@ if "polluted" in sys.argv:
 else:
     aerosol_str = "pristine"
 
-rd = 0.5e-6
-epsilon = 1e-3
-z_distr = 80
+rd = 1e-6
+epsilon = 0.1
+z_distr = 400
 
 mix = cd.mixed_aerosol(aerosol_str, epsilon, rd)
 sol = cd.soluble_aerosol(aerosol_str)
@@ -51,10 +51,10 @@ ax[0].set_ylabel('droplet concentration [1/mg]')
 ax[0].set_xlabel('droplet radius [$\\mu$m]')
 ax[1].set_xlabel('droplet radius [$\\mu$m]')
 
-# if aerosol_str == "pristine":
-#     ax[1].set_xlim(12.5,17)
-# elif aerosol_str == "polluted":
-#     ax[1].set_xlim(6,12)
+if aerosol_str == "pristine":
+    ax[1].set_xlim(8,20)
+elif aerosol_str == "polluted":
+    ax[1].set_xlim(6,12)
 
 handles, labels = ax[0].get_legend_handles_labels()
 fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.89),
