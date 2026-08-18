@@ -13,13 +13,10 @@ plt.rcParams.update({
     'legend.fontsize': 16
 })
 
-if "polluted" in sys.argv:
-    aerosol_str = "polluted"
-else:
-    aerosol_str = "pristine"
+aerosol_str = "pristine"
 
 rd_list = np.linspace(0.01, 5, 10) * 1e-6
-eps_list = np.linspace(0.0, 1., 10)
+eps_list = np.linspace(0.2, 1., 10)
 
 lwc_list = []
 nc_list = []
@@ -33,7 +30,7 @@ for rd in rd_list:
         aerosol = cd.mixed_aerosol(aerosol_str, epsilon, rd)
         outfile = str(rd)+str(epsilon)+".nc"
         cd.run_scheme(aerosol, outfile, outfreq = 400)
-        z, liq_mix_ratio, conc, mean_r, std_dev_r = cd.read_profiles(outfile)
+        z, rh, liq_mix_ratio, conc, mean_r, std_dev_r = cd.read_profiles(outfile)
         os.remove(outfile)
 
         lwc_list.append(liq_mix_ratio[-1])

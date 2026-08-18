@@ -14,12 +14,9 @@ plt.rcParams.update({
     'legend.fontsize': 16
 })
 
-if "polluted" in sys.argv:
-    aerosol_str = "polluted"
-else:
-    aerosol_str = "pristine"
+aerosol_str = "polluted"
 
-rd = 1e-6
+rd = 3e-6
 epsilon = 0.1
 z_distr = 400
 
@@ -32,7 +29,7 @@ ax = ax.flatten()
 
 for aerosol in [sol, mix]:
     outfile = "sol.nc" if aerosol == sol else "mix.nc"
-    cd.run_scheme(aerosol, outfile, outfreq = 5, spec = True)
+    cd.run_scheme(aerosol, outfile, outfreq = z_distr, spec = True)
     distr1, radii, bin_widths, initial_distr, init_radii, init_bin_widths = cd.read_distr(outfile, z_distr)
     os.remove(outfile)
 
@@ -52,9 +49,9 @@ ax[0].set_xlabel('droplet radius [$\\mu$m]')
 ax[1].set_xlabel('droplet radius [$\\mu$m]')
 
 if aerosol_str == "pristine":
-    ax[1].set_xlim(8,20)
+    ax[1].set_xlim(12,19)
 elif aerosol_str == "polluted":
-    ax[1].set_xlim(6,12)
+    ax[1].set_xlim(6,19)
 
 handles, labels = ax[0].get_legend_handles_labels()
 fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.89),
