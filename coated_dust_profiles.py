@@ -19,8 +19,9 @@ if "polluted" in sys.argv:
 else:
     aerosol_str = "pristine"
 
-rd = 0.5e-6
-epsilon_list = [1e-5, 1e-2, 0.1, 1.]
+rd = 0.02e-6
+#epsilon_list = [1e-5, 1e-2, 0.1, 1.]
+epsilon_list = [0.1]
 
 out_png = "plots/rd_insol/profiles_" + aerosol_str + ".pdf"
 fig, ax = plt.subplots(2, 2, figsize=(8.0, 9.0), sharey=True, squeeze=False)

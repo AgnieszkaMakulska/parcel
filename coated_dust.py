@@ -14,7 +14,7 @@ def mixed_aerosol(aerosol_str, epsilon, rd):
         epsilon = 0.9999999
     if aerosol_str == "pristine":
         return f'{{"pristine":{{"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}, \
-            "mixed": {{"kappa": 0.61, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.1], "n_tot": [1.0e6]}} }}'
+            "mixed": {{"kappa": 1.28, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.1], "n_tot": [1.0e6]}} }}'
     elif aerosol_str == "polluted":
         return f'{{"polluted":{{"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}, \
             "mixed": {{"kappa": 0.61, "sol_frac": {epsilon}, "mean_r": [{rd}], "gstdev": [1.1], "n_tot": [1.0e6]}} }}'
@@ -47,11 +47,11 @@ def run_scheme(aerosol, outfile, outfreq, spec=False):
         T_0=283,
         aerosol = aerosol,
         w = 1,
-        sd_conc = 1000,
-        #sd_const_multi=1000000,
-        #n_sd_max=1e7,
+        sd_conc = None,
+        sd_const_multi=1000000,
+        n_sd_max=1e7,
         dt = 1,
-        z_max = 400,
+        z_max = 200,
         outfile = outfile,
         outfreq = outfreq,
         scheme = "lgrngn",
@@ -60,7 +60,9 @@ def run_scheme(aerosol, outfile, outfreq, spec=False):
         ice_switch = False,
         ice_nucl = False,
         depo = False,
-        backend = "gpu"
+        backend = "gpu",
+        aerosol_independent_of_rhod = True
+        #large_tail = True
     )
     parcel(**args)
 
@@ -68,11 +70,11 @@ def run_scheme(aerosol, outfile, outfreq, spec=False):
 def read_profiles(outfile):
     with netcdf.netcdf_file(outfile, 'r') as f:
         z = np.array(f.variables['z'][:]).squeeze()
-        cloud_m0 = np.array(f.variables['liq_m0'][:]).squeeze()
-        cloud_m1 = np.array(f.variables['liq_m1'][:]).squeeze()
-        cloud_m2 = np.array(f.variables['liq_m2'][:]).squeeze()
-        cloud_m3 = np.array(f.variables['liq_m3'][:]).squeeze()
-        cloud_m4 = np.array(f.variables['liq_m4'][:]).squeeze()
+        cloud_m0 = np.array(f.variables['cloud_m0'][:]).squeeze()
+        cloud_m1 = np.array(f.variables['cloud_m1'][:]).squeeze()
+        cloud_m2 = np.array(f.variables['cloud_m2'][:]).squeeze()
+        cloud_m3 = np.array(f.variables['cloud_m3'][:]).squeeze()
+        cloud_m4 = np.array(f.variables['cloud_m4'][:]).squeeze()
         liq_mix_ratio = cloud_m3 * 4/3 * np.pi * common.rho_w
         conc = cloud_m0 
         mean_r = np.where(cloud_m0 > 0, cloud_m1 / cloud_m0, 0)
@@ -80,6 +82,7 @@ def read_profiles(outfile):
                         cloud_m2 / cloud_m0 - (cloud_m1 / cloud_m0)**2, 
                         0)
         std_dev_r = np.sqrt(np.maximum(variance_r, 0.0))
+        print(np.array(f.variables['aerosol_m0'][:]).squeeze())
     return z, liq_mix_ratio*1e3, conc/1e6, mean_r*1e6, std_dev_r*1e6
 
 def read_distr(outfile, z_distr):

@@ -35,6 +35,8 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
   time_dep_ice_nucl = False,
   depo = False,
   sd_conc = 64,
+  sd_const_multi = None,
+  n_sd_max = 1e6,
   aerosol = '{"ammonium_sulfate": {"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.02e-6], "gstdev": [1.4], "n_tot": [60.0e6]}}',
   out_bin = '{"radii": {"rght": 0.01, "moms": [0], "drwt": "wet", "nbin": 1, "lnli": "log", "left": 1e-15}}',
   SO2_g = 0., O3_g = 0., H2O2_g = 0., CO2_g = 0., HNO3_g = 0., NH3_g = 0.,
@@ -45,6 +47,7 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
   wait = 0,
   large_tail = False,
   rng_seed = None,
+  aerosol_independent_of_rhod = None,
   backend = "serial"
 ):
   """
@@ -119,6 +122,8 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
     chem_dsl (Optional[bool]):    on/off for dissolving chem species into droplets
     chem_dsc (Optional[bool]):    on/off for dissociation of chem species in droplets
     chem_rct (Optional[bool]):    on/off for oxidation of S_IV to S_VI
+
+    aerosol_independent_of_rhod (Optional[bool]): on/off for initial aerosol concentration independent of rhod (assumed at STP otherwise)
 
 }
 
