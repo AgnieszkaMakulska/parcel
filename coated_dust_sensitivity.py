@@ -15,8 +15,8 @@ plt.rcParams.update({
 
 aerosol_str = "pristine"
 
-rd_list = np.linspace(0.01, 5, 10) * 1e-6
-eps_list = np.logspace(-5, 0, 10)
+rd_list = np.logspace(-2, 0.7, 5) * 1e-6
+eps_list = np.linspace(0.01, 0.9, 5)
 
 lwc_list = []
 nc_list = []
@@ -65,7 +65,7 @@ for i in range(4):
     ax[i].set_xticks(range(n_rd))
     ax[i].set_xticklabels([f"{v*1e6:.2f}" for v in rd_list], rotation=45)
     ax[i].set_yticks(range(n_eps))
-    ax[i].set_yticklabels([f"{v:.1f}" for v in eps_list])
+    ax[i].set_yticklabels([f"{v:.2f}" for v in eps_list])
 
     cbar = fig.colorbar(im, ax=ax[i])
     ax[i].set_title(titles[i])
