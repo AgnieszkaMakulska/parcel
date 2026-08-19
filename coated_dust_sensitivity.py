@@ -16,7 +16,7 @@ plt.rcParams.update({
 aerosol_str = "pristine"
 
 rd_list = np.linspace(0.01, 5, 10) * 1e-6
-eps_list = np.linspace(0.2, 1., 10)
+eps_list = np.logspace(-5, 0, 10)
 
 lwc_list = []
 nc_list = []

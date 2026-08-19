@@ -18,7 +18,7 @@ aerosol_str = "pristine"
 out_png = "plots/rd_insol/profiles_" + aerosol_str + ".pdf"
 
 rd = 3e-6
-epsilon_list = [1e-5, 0.05, 0.1, 1.]
+epsilon_list = [1e-5, 0.05, 0.1, 0.9]
 
 mosaic = [
     ["ax1", "ax1", "ax2", "ax2"],
@@ -63,14 +63,14 @@ ax[2].set_xlabel('droplet mean radius [$\\mu$m]')
 ax[3].set_xlabel('std. dev. of droplet radius [$\\mu$m]')
 ax[4].set_xlabel('RH [%]')
 
-#ax[0].set_xlim(0.0,0.3)
-# if aerosol_str == "pristine":
-#     ax[1].set_xlim(55,65)
+if aerosol_str == "pristine":
+    ax[1].set_xlim(57,61)
+    ax[4].set_xlim(0.2,0.8)
 #     ax[2].set_xlim(2,10)
 # elif aerosol_str == "polluted":
 #     ax[1].set_xlim(230,370)
 #     ax[2].set_xlim(2,9)
-ax[4].set_xlim(0,1)
+
 
 handles, labels = ax[0].get_legend_handles_labels()
 fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.89),

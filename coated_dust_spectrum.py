@@ -14,10 +14,10 @@ plt.rcParams.update({
     'legend.fontsize': 16
 })
 
-aerosol_str = "polluted"
+aerosol_str = "pristine"
 
 rd = 3e-6
-epsilon = 0.1
+epsilon = 0.05
 z_distr = 400
 
 mix = cd.mixed_aerosol(aerosol_str, epsilon, rd)
@@ -49,7 +49,7 @@ ax[0].set_xlabel('droplet radius [$\\mu$m]')
 ax[1].set_xlabel('droplet radius [$\\mu$m]')
 
 if aerosol_str == "pristine":
-    ax[1].set_xlim(12,19)
+    ax[1].set_xlim(12,20)
 elif aerosol_str == "polluted":
     ax[1].set_xlim(6,19)
 
