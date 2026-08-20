@@ -15,7 +15,7 @@ plt.rcParams.update({
 
 aerosol_str = "pristine"
 
-rd_list = np.logspace(-2, 0.7, 5) * 1e-6
+rd_list = np.linspace(0.5, 8, 5) * 1e-6
 eps_list = np.linspace(0.01, 0.9, 5)
 
 lwc_list = []
@@ -60,11 +60,11 @@ ax = ax.flatten()
 
 for i in range(4):
     X, Y = np.meshgrid(range(n_rd+1), range(n_eps+1))
-    im = ax[i].pcolormesh(X, Y, datasets[i], cmap='summer')
+    im = ax[i].pcolormesh(X, Y, datasets[i], cmap='winter')
 
-    ax[i].set_xticks(range(n_rd))
+    ax[i].set_xticks(np.arange(n_rd) + 0.5)
     ax[i].set_xticklabels([f"{v*1e6:.2f}" for v in rd_list], rotation=45)
-    ax[i].set_yticks(range(n_eps))
+    ax[i].set_yticks(np.arange(n_eps) + 0.5)
     ax[i].set_yticklabels([f"{v:.2f}" for v in eps_list])
 
     cbar = fig.colorbar(im, ax=ax[i])
