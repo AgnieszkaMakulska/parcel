@@ -57,6 +57,7 @@ for epsilon in epsilon_list:
 
 ax[0].set_ylabel('z [m]')
 ax[2].set_ylabel('z [m]')
+ax[4].set_ylabel('z [m]')
 ax[0].set_xlabel('liquid mix. ratio [g/kg]')
 ax[1].set_xlabel('droplet concentration [1/mg]')
 ax[2].set_xlabel('droplet mean radius [$\\mu$m]')
@@ -65,7 +66,7 @@ ax[4].set_xlabel('RH [%]')
 
 if aerosol_str == "pristine":
     ax[1].set_xlim(57,61)
-    ax[4].set_xlim(0.2,0.8)
+    ax[4].set_xlim(0.0,0.8)
 #     ax[2].set_xlim(2,10)
 # elif aerosol_str == "polluted":
 #     ax[1].set_xlim(230,370)
@@ -75,5 +76,6 @@ if aerosol_str == "pristine":
 handles, labels = ax[0].get_legend_handles_labels()
 fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.89),
             ncol=2, frameon=False)
+ax[4].tick_params(labelleft=True)
 plt.tight_layout(rect=[0, 0, 1, 0.9])
 plt.savefig(out_png, dpi=200, bbox_inches='tight')
