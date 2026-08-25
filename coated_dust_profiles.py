@@ -17,7 +17,7 @@ plt.rcParams.update({
 aerosol_str = "pristine"
 out_png = "plots/rd_insol/profiles_" + aerosol_str + ".pdf"
 
-rd = 3e-6
+rd = 1.5e-6
 epsilon_list = [0.001, 0.05, 0.1, 0.9]
 
 mosaic = [

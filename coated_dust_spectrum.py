@@ -16,7 +16,7 @@ plt.rcParams.update({
 
 aerosol_str = "pristine"
 
-rd = 3e-6
+rd = 1.5e-6
 epsilon = 0.05
 z_distr = 400
 
