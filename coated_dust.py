@@ -37,7 +37,7 @@ def run_scheme(aerosol, outfile, outfreq, spec=False):
     if spec == False:
         out_bin = '{"liq": {"rght": 1, "moms": [0,1,2,3,4], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 1e-20},' \
         '"aerosol": {"rght": 1, "moms": [0], "drwt": "dry", "nbin": 1, "lnli": "lin", "left": 1e-20},' \
-        '"cloud": {"rght": 100e-6, "moms": [0,1,2,3,4], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 2e-6}}'
+        '"cloud": {"rght": 500e-6, "moms": [0,1,2,3,4], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-6}}'
     else:
         out_bin = '{"initial_spec": {"rght": 8e-6, "moms": [0], "drwt": "wet", "nbin": 100, "lnli": "log", "left": 0.01e-6},' \
             '"aerosol": {"rght": 1, "moms": [0], "drwt": "dry", "nbin": 1, "lnli": "lin", "left": 1e-20},' \
