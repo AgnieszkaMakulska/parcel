@@ -24,12 +24,12 @@ def _micro_init(aerosol, opts, state):
   if opts["rng_seed"] is not None:
       opts_init.rng_seed = int(opts["rng_seed"])
 
-  if opts["sd_conc"] is not None and opts["sd_const_multi"] is not None:
-    raise ValueError("sd_conc and sd_const_multi can't both be defined")  
-  elif opts["sd_conc"] is not None:
-    opts_init.sd_conc = int(opts["sd_conc"])
-  elif opts["sd_const_multi"] is not None:
-    opts_init.sd_const_multi = int(opts["sd_const_multi"])
+  # if opts["sd_conc"] is not None and opts["sd_const_multi"] is not None:
+  #   raise ValueError("sd_conc and sd_const_multi can't both be defined")  
+  # elif opts["sd_conc"] is not None:
+  #   opts_init.sd_conc = int(opts["sd_conc"])
+  # elif opts["sd_const_multi"] is not None:
+  #   opts_init.sd_const_multi = int(opts["sd_const_multi"])
 
   if opts["n_sd_max"] is not None:
     opts_init.n_sd_max = int(opts["n_sd_max"])
@@ -43,7 +43,7 @@ def _micro_init(aerosol, opts, state):
     lognormals = []
     for i in range(len(dct["mean_r"])):
       lognormals.append(lognormal(dct["mean_r"][i], dct["gstdev"][i], dct["n_tot"][i]))
-    dry_distros[(float(dct["kappa"]), float(dct["sol_frac"]))] = sum_of_lognormals(lognormals)
+    dry_distros[(float(dct["kappa"]), float(dct["sol_frac"]), int(dct["sd_conc"]), int(dct["const_multi"]))] = sum_of_lognormals(lognormals)
   opts_init.dry_distros = dry_distros
 
   # better resolution for the SD tail

@@ -34,10 +34,10 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
   ice_nucl = False,
   time_dep_ice_nucl = False,
   depo = False,
-  sd_conc = 64,
-  sd_const_multi = None,
+  # sd_conc = 64,
+  # sd_const_multi = None,
   n_sd_max = 1e6,
-  aerosol = '{"ammonium_sulfate": {"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.02e-6], "gstdev": [1.4], "n_tot": [60.0e6]}}',
+  aerosol = '{"ammonium_sulfate": {"kappa": 0.61, "sol_frac": 1.0, "sd_conc": 64, "const_multi": 0, "mean_r": [0.02e-6], "gstdev": [1.4], "n_tot": [60.0e6]}}',
   out_bin = '{"radii": {"rght": 0.01, "moms": [0], "drwt": "wet", "nbin": 1, "lnli": "log", "left": 1e-15}}',
   SO2_g = 0., O3_g = 0., H2O2_g = 0., CO2_g = 0., HNO3_g = 0., NH3_g = 0.,
   chem_dsl = False, chem_dsc = False, chem_rct = False,
@@ -72,15 +72,16 @@ def parcel(dt = .1, z_max = 200., w = 1., T_0 = 300., p_0 = 101300.,
                                   valid options are: pprof_const_th_rv, pprof_const_rhod, pprof_piecewise_const_rhod
     wait (Optional[float]):       number of timesteps to run parcel model with vertical velocity=0 at the end of simulation
                                   (added for testing)
-    sd_conc (Optional[int]):      number of moving bins (super-droplets)
 
     aerosol (Optional[json str]): dict of dicts defining aerosol distribution, e.g.:
 
-                                  {"ammonium_sulfate": {"kappa": 0.61, "sol_frac": 1.0, "mean_r": [0.02e-6, 0.07e-7], "gstdev": [1.4, 1.2], "n_tot": [120.0e6, 80.0e6]}
-                                   "gccn"            : {"kappa": 1.28, "sol_frac": 1.0, "mean_r": [2e-6],             "gstdev": [1.6],      "n_tot": [1e2]}}
+                                  {"ammonium_sulfate": {"kappa": 0.61, "sol_frac": 1.0, "sd_conc": 64, "const_multi": 0, "mean_r": [0.02e-6, 0.07e-7], "gstdev": [1.4, 1.2], "n_tot": [120.0e6, 80.0e6]}
+                                   "gccn"            : {"kappa": 1.28, "sol_frac": 1.0, "sd_conc": 64, "const_multi": 0, "mean_r": [2e-6], "gstdev": [1.6],  "n_tot": [1e2]}}
 
                                   where kappa  - hygroscopicity parameter (see doi:10.5194/acp-7-1961-2007)
                                         sol_frac - soluble volume fraction (0-1)
+                                        sd_conc - number of super-droplets (either sd_conc or const_multi has to be 0)
+                                        const_multi - constant multiplicity of super-droplets (either sd_conc or const_multi has to be 0)
                                         mean_r - lognormal distribution mean soluble dry radius [m]        (list if multimodal distribution)
                                         gstdev - lognormal distribution geometric standard deviation       (list if multimodal distribution)
                                         n_tot  - lognormal distribution total concentration under standard
