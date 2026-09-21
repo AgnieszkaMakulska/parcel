@@ -16,11 +16,10 @@ plt.rcParams.update({
 
 aerosol_str = "pristine"
 
-rd = 1.5e-6
 epsilon = 0.05
 z_distr = 400
 
-mix = cd.mixed_aerosol(aerosol_str, epsilon, rd)
+mix = cd.mixed_aerosol(aerosol_str, epsilon)
 sol = cd.soluble_aerosol(aerosol_str)
 
 out_png = "plots/rd_insol/spectrum_" + aerosol_str + ".pdf"

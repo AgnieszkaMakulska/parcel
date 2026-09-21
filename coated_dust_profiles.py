@@ -17,7 +17,6 @@ plt.rcParams.update({
 aerosol_str = "pristine"
 out_png = "plots/rd_insol/profiles_" + aerosol_str + ".pdf"
 
-rd = 1.5e-6
 epsilon_list = [0.001, 0.05, 0.5, 1.]
 
 mosaic = [
@@ -43,7 +42,7 @@ ax[4].plot((rh-1)*100, z, label=l, color="black",linestyle="--")
 
 # coated dust
 for epsilon in epsilon_list:
-    aerosol = cd.mixed_aerosol(aerosol_str, epsilon, rd)
+    aerosol = cd.mixed_aerosol(aerosol_str, epsilon)
     if epsilon == 1.0:
         l = 'sea salt ($\\epsilon$ = 1) + sulfate'
     else:
