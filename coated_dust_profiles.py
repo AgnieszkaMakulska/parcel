@@ -65,12 +65,12 @@ ax[3].set_xlabel('std. dev. of droplet radius [$\\mu$m]')
 ax[4].set_xlabel('RH [%]')
 
 if aerosol_str == "pristine":
-    ax[1].set_xlim(57,61)
+    ax[1].set_xlim(57,61) # w 1
     ax[4].set_xlim(0.0,0.8)
-#     ax[2].set_xlim(2,10)
-# elif aerosol_str == "polluted":
-#     ax[1].set_xlim(230,370)
-#     ax[2].set_xlim(2,9)
+    #ax[1].set_xlim(57,100) # w 2.5
+    #ax[4].set_xlim(0.0,1.5)
+    # ax[1].set_xlim(50,60) # w 0.5
+    # ax[4].set_xlim(0.0,1.)
 
 
 handles, labels = ax[0].get_legend_handles_labels()

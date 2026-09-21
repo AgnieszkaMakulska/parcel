@@ -29,7 +29,7 @@ ax = ax.flatten()
 
 for aerosol in [sol, mix]:
     outfile = "sol.nc" if aerosol == sol else "mix.nc"
-    cd.run_scheme(aerosol, outfile, outfreq = z_distr, spec = True)
+    cd.run_scheme(aerosol, outfile, outfreq = 50, spec = True)
     distr1, radii, bin_widths, initial_distr, init_radii, init_bin_widths = cd.read_distr(outfile, z_distr)
     os.remove(outfile)
 
