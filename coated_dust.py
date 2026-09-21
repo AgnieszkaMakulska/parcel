@@ -11,14 +11,14 @@ zmax = 400
 
 def mixed_aerosol(aerosol_str, epsilon, rd):
 
-    if epsilon == 1.0 or epsilon == 0.0:
-        raise Exception("for mixed aerosol epsilon has to be between (0,1)")
+    # if epsilon == 1.0 or epsilon == 0.0:
+    #     raise Exception("for mixed aerosol epsilon has to be between (0,1)")
     if aerosol_str == "pristine":
         return f'{{"pristine":{{"kappa": 0.61, "sol_frac": 1.0, "sd_conc": 100000, "const_multi":0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}, \
-            "mixed": {{"kappa": 0.61, "sol_frac": {epsilon},  "sd_conc": 1000, "const_multi":0, "mean_r": [{rd}], "gstdev": [1.4], "n_tot": [2.0e6]}} }}'
+            "mixed": {{"kappa": 1.28, "sol_frac": {epsilon},  "sd_conc": 1000, "const_multi":0, "mean_r": [{rd}], "gstdev": [1.4], "n_tot": [2.0e6]}} }}'
     elif aerosol_str == "polluted":
         return f'{{"polluted":{{"kappa": 0.61, "sol_frac": 1.0,  "sd_conc": 100000, "const_multi":0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}, \
-            "mixed": {{"kappa": 0.61, "sol_frac": {epsilon},  "sd_conc": 1000, "const_multi":0, "mean_r": [{rd}], "gstdev": [1.4], "n_tot": [2.0e6]}} }}'
+            "mixed": {{"kappa": 1.28, "sol_frac": {epsilon},  "sd_conc": 1000, "const_multi":0, "mean_r": [{rd}], "gstdev": [1.4], "n_tot": [2.0e6]}} }}'
     else:
         raise ValueError('unknown aerosol spec')
 
