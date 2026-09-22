@@ -67,7 +67,7 @@ ax[3].set_xlabel('std. dev. of droplet radius [$\\mu$m]')
 ax[4].set_xlabel('RH [%]')
 
 if aerosol_str == "pristine":
-    ax[0].set_xlim(57,61) # w 1
+    ax[0].set_xlim(57,67) # w 1
     ax[4].set_xlim(0.6,0.8)
     ax[4].set_ylim(50,120)
     #ax[0].set_xlim(57,100) # w 2.5
