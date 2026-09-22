@@ -50,7 +50,7 @@ ax[1].set_xlabel('droplet radius [$\\mu$m]')
 if aerosol_str == "pristine":
     ax[1].set_xlim(12,20)
 elif aerosol_str == "polluted":
-    ax[1].set_xlim(6,19)
+    ax[1].set_xlim(6,20)
 
 handles, labels = ax[0].get_legend_handles_labels()
 fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.89),

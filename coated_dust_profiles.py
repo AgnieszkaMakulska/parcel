@@ -75,6 +75,11 @@ if aerosol_str == "pristine":
     # ax[0].set_xlim(50,60) # w 0.5
     # ax[1].set_xlim(0.0,1.)
 
+elif aerosol_str == "polluted":
+    ax[0].set_xlim(390,400) # w 1
+    ax[4].set_xlim(0.2,0.4)
+    ax[4].set_ylim(50,100)
+
 
 handles, labels = ax[0].get_legend_handles_labels()
 ax[4].tick_params(labelleft=True)
