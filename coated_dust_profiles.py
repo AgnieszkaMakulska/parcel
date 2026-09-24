@@ -4,12 +4,12 @@ import os
 import matplotlib.pyplot as plt
 plt.style.use('seaborn-v0_8')
 plt.rcParams.update({
-    'font.size': 16,
-    'axes.labelsize': 16,
-    'axes.titlesize': 16,
-    'xtick.labelsize': 16,
-    'ytick.labelsize': 16,
-    'legend.fontsize': 16,
+    'font.size': 14,
+    'axes.labelsize': 14,
+    'axes.titlesize': 14,
+    'xtick.labelsize': 14,
+    'ytick.labelsize': 14,
+    'legend.fontsize': 14,
     'lines.linewidth': 1.5
 })
 
@@ -49,9 +49,9 @@ for epsilon in epsilon_list:
     else:
         l = 'dust ($\\epsilon$ = ' + str(round(epsilon, 5)) + ') + sulfate'
     outfile = str(epsilon)+".nc"
-    cd.run_scheme(aerosol, zmax, outfile, outfreq = 5)
+    cd.run_scheme(aerosol, zmax, outfile, outfreq = 1)
     z, rh, liq_mix_ratio, conc, mean_r, std_dev_r = cd.read_profiles(outfile)
-    os.remove(outfile)
+    #os.remove(outfile)
     ax[0].plot(conc, z, label=l)
     ax[1].plot(liq_mix_ratio, z, label=l)
     ax[2].plot(mean_r, z, label=l)

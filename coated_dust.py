@@ -42,7 +42,7 @@ def run_scheme(aerosol, zmax, outfile, outfreq, spec=False):
         out_bin = '{"initial_spec": {"rght": 50e-6, "moms": [0], "drwt": "wet", "nbin": 100, "lnli": "log", "left": 0.01e-6},' \
             '"aerosol": {"rght": 1, "moms": [0], "drwt": "dry", "nbin": 1, "lnli": "lin", "left": 1e-20},' \
             '"dry": {"rght": 50e-6, "moms": [0], "drwt": "dry", "nbin": 100, "lnli": "log", "left": 0.005e-6},' \
-            '"spec": {"rght": 100e-6, "moms": [0], "drwt": "wet", "nbin": 1000, "lnli": "log", "left": 1e-6}}'
+            '"spec": {"rght": 60e-6, "moms": [0], "drwt": "wet", "nbin": 200, "lnli": "log", "left": 5e-6}}'
 
     args = dict(
         p_0=90000,
@@ -50,9 +50,7 @@ def run_scheme(aerosol, zmax, outfile, outfreq, spec=False):
         T_0=280,
         aerosol = aerosol,
         w = 1,
-        #sd_conc = None,
-        #large_tail = True,
-        #sd_const_multi=1000,
+        large_tail = True,
         n_sd_max=1e7,
         dt = 1,
         z_max = zmax,

@@ -23,7 +23,6 @@ sol = cd.soluble_aerosol(aerosol_str)
 
 out_png = "plots/rd_insol/dry_spectrum_" + aerosol_str + ".pdf"
 fig, ax = plt.subplots(1, 1, figsize=(7.0, 5.0))
-#ax = ax.flatten()
 
 for aerosol in [sol, dust]:
     outfile = "dry_spec.nc"
@@ -32,7 +31,6 @@ for aerosol in [sol, dust]:
     os.remove(outfile)
 
     l = "ammonium sulfate" if aerosol==sol else "coated dust"
-    #c = "tab:blue" if aerosol==sol else "tab:orange"
     ax.bar(radii, distr, width=bin_widths, alpha=0.5, label = l, linewidth=2)
 
 ax.set_xscale('log')
@@ -45,14 +43,4 @@ handles, labels = ax.get_legend_handles_labels()
 fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, 0.89),
             ncol=2, frameon=False)
 plt.tight_layout(rect=[0, 0, 1, 0.90])
-
-# xmin, xmax = ax[1].get_xlim()
-# ticks = np.arange(np.ceil(xmin), np.floor(xmax) + 1)
-# ax[1].xaxis.set_major_locator(FixedLocator(ticks))
-# ax[1].xaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:g}'))
-# ax[1].xaxis.set_minor_locator(FixedLocator([]))
-# ax[1].xaxis.set_minor_formatter(NullFormatter())
-# ax[1].xaxis.get_offset_text().set_visible(False)
-# ax[1].tick_params(axis='x')
-
 plt.savefig(out_png, dpi=200)
