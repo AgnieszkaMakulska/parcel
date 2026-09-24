@@ -16,6 +16,7 @@ plt.rcParams.update({
 
 aerosol_str = "pristine"
 out_png = "plots/rd_insol/profiles_" + aerosol_str + ".pdf"
+zmax = 400
 
 epsilon_list = [0.001, 0.05, 0.5, 1.]
 
@@ -31,7 +32,7 @@ ax = list(axd.values())
 sol = cd.soluble_aerosol(aerosol_str)
 l = 'sulfate'
 outfile = "sol.nc"
-cd.run_scheme(sol, outfile, outfreq = 5)
+cd.run_scheme(sol, zmax, outfile, outfreq = 5)
 z, rh, liq_mix_ratio, conc, mean_r, std_dev_r = cd.read_profiles(outfile)
 os.remove(outfile)
 ax[0].plot(conc, z, label=l, color="black",linestyle="--")
@@ -48,7 +49,7 @@ for epsilon in epsilon_list:
     else:
         l = 'dust ($\\epsilon$ = ' + str(round(epsilon, 5)) + ') + sulfate'
     outfile = str(epsilon)+".nc"
-    cd.run_scheme(aerosol, outfile, outfreq = 5)
+    cd.run_scheme(aerosol, zmax, outfile, outfreq = 5)
     z, rh, liq_mix_ratio, conc, mean_r, std_dev_r = cd.read_profiles(outfile)
     os.remove(outfile)
     ax[0].plot(conc, z, label=l)
@@ -67,7 +68,7 @@ ax[3].set_xlabel('std. dev. of droplet radius [$\\mu$m]')
 ax[4].set_xlabel('RH [%]')
 
 if aerosol_str == "pristine":
-    ax[0].set_xlim(57,67) # w 1
+    ax[0].set_xlim(57.5,63.) # w 1
     ax[4].set_xlim(0.6,0.8)
     ax[4].set_ylim(50,120)
     #ax[0].set_xlim(57,100) # w 2.5

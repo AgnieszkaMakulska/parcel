@@ -7,29 +7,15 @@ from parcel import parcel
 from scipy.io import netcdf
 from libcloudphxx import common
 
-zmax = 400
-
-#"mixed": {{"kappa": 1.28, "sol_frac": {epsilon},  "sd_conc": 1000, "const_multi":0, "mean_r": [0.5e-6], "gstdev": [1.8], "n_tot": [2.0e6]}} }}'
-
 def mixed_aerosol(aerosol_str, epsilon):
 
-    # if epsilon == 1.0 or epsilon == 0.0:
-    #     raise Exception("for mixed aerosol epsilon has to be between (0,1)")
     if aerosol_str == "pristine":
         return f'{{"pristine":{{"kappa": 0.61, "sol_frac": 1.0, "sd_conc": 100000, "const_multi":0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}, \
-            "mode1": {{"kappa": 1.28, "sol_frac": {epsilon},  "sd_conc": 5000, "const_multi":0, "mean_r": [0.2495e-6], "gstdev": [1.900], "n_tot": [4.9e6]}}, \
-            "mode2": {{"kappa": 1.28, "sol_frac": {epsilon},  "sd_conc": 1000, "const_multi":0, "mean_r": [1.8965e-6], "gstdev": [1.364], "n_tot": [0.5005e6]}}, \
-            "mode3": {{"kappa": 1.28, "sol_frac": {epsilon},  "sd_conc": 100, "const_multi":0, "mean_r": [5.841e-6], "gstdev": [1.680], "n_tot": [0.003164e6]}} }}'
-          
+                    "dust": {{"kappa": 1.28, "sol_frac": {epsilon},  "sd_conc": 200000, "const_multi":0, "mean_r": [0.2495e-6, 1.8965e-6, 5.841e-6], "gstdev": [1.900, 1.364, 1.680], "n_tot": [4.9e6, 0.5005e6, 0.003164e6]}} }}'
+
     elif aerosol_str == "polluted":
         return f'{{"polluted":{{"kappa": 0.61, "sol_frac": 1.0,  "sd_conc": 100000, "const_multi":0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}, \
-            "mode1": {{"kappa": 1.28, "sol_frac": {epsilon},  "sd_conc": 50000, "const_multi":0, "mean_r": [0.2495e-6], "gstdev": [1.900], "n_tot": [4.9e6]}}, \
-            "mode2": {{"kappa": 1.28, "sol_frac": {epsilon},  "sd_conc": 10000, "const_multi":0, "mean_r": [1.8965e-6], "gstdev": [1.364], "n_tot": [0.5005e6]}}, \
-            "mode3": {{"kappa": 1.28, "sol_frac": {epsilon},  "sd_conc": 1000, "const_multi":0, "mean_r": [5.841e-6], "gstdev": [1.680], "n_tot": [0.003164e6]}} }}'
-
-    # elif aerosol_str == "polluted":
-    #     return f'{{"polluted":{{"kappa": 0.61, "sol_frac": 1.0,  "sd_conc": 100000, "const_multi":0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}, \
-    #         "mixed": {{"kappa": 1.28, "sol_frac": {epsilon},  "sd_conc": 1000000, "const_multi":0, "mean_r": [0.2495e-6, 1.8965e-6, 5.841e-6], "gstdev": [1.900, 1.364, 1.680], "n_tot": [4.9e6, 0.5005e6, 0.003164e6]}} }}'
+                     "dust": {{"kappa": 1.28, "sol_frac": {epsilon},  "sd_conc": 100000, "const_multi":0, "mean_r": [0.2495e-6, 1.8965e-6, 5.841e-6], "gstdev": [1.900, 1.364, 1.680], "n_tot": [4.9e6, 0.5005e6, 0.003164e6]}} }}'
     else:
         raise ValueError('unknown aerosol spec')
 
@@ -42,17 +28,21 @@ def soluble_aerosol(aerosol_str):
         raise ValueError('unknown aerosol spec')
 
 
+def dust_aerosol(epsilon):
+    return f'{{"dust": {{"kappa": 1.28, "sol_frac": {epsilon},  "sd_conc": 200000, "const_multi":0, "mean_r": [0.2495e-6, 1.8965e-6, 5.841e-6], "gstdev": [1.900, 1.364, 1.680], "n_tot": [4.9e6, 0.5005e6, 0.003164e6]}} }}'
 
-def run_scheme(aerosol, outfile, outfreq, spec=False):
+
+def run_scheme(aerosol, zmax, outfile, outfreq, spec=False):
 
     if spec == False:
         out_bin = '{"liq": {"rght": 1, "moms": [0,1,2,3,4], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 1e-20},' \
         '"aerosol": {"rght": 1, "moms": [0], "drwt": "dry", "nbin": 1, "lnli": "lin", "left": 1e-20},' \
         '"cloud": {"rght": 500e-6, "moms": [0,1,2,3,4], "drwt": "wet", "nbin": 1, "lnli": "lin", "left": 0.5e-6}}'
     else:
-        out_bin = '{"initial_spec": {"rght": 8e-6, "moms": [0], "drwt": "wet", "nbin": 100, "lnli": "log", "left": 0.01e-6},' \
+        out_bin = '{"initial_spec": {"rght": 50e-6, "moms": [0], "drwt": "wet", "nbin": 100, "lnli": "log", "left": 0.01e-6},' \
             '"aerosol": {"rght": 1, "moms": [0], "drwt": "dry", "nbin": 1, "lnli": "lin", "left": 1e-20},' \
-            '"spec": {"rght": 30e-6, "moms": [0], "drwt": "wet", "nbin": 1000, "lnli": "log", "left": 1e-6}}'
+            '"dry": {"rght": 50e-6, "moms": [0], "drwt": "dry", "nbin": 100, "lnli": "log", "left": 0.005e-6},' \
+            '"spec": {"rght": 100e-6, "moms": [0], "drwt": "wet", "nbin": 1000, "lnli": "log", "left": 1e-6}}'
 
     args = dict(
         p_0=90000,
@@ -91,11 +81,6 @@ def read_profiles(outfile):
         cloud_m3 = np.array(f.variables['cloud_m3'][:]).squeeze()
         cloud_m4 = np.array(f.variables['cloud_m4'][:]).squeeze()
 
-        # cloud_m0 = np.array(f.variables['act_m0'][:]).squeeze()
-        # cloud_m1 = np.array(f.variables['act_m1'][:]).squeeze()
-        # cloud_m2 = np.array(f.variables['act_m2'][:]).squeeze()
-        # cloud_m3 = np.array(f.variables['act_m3'][:]).squeeze()
-        # cloud_m4 = np.array(f.variables['act_m4'][:]).squeeze()
         liq_mix_ratio = cloud_m3 * 4/3 * np.pi * common.rho_w
         conc = cloud_m0 
         mean_r = np.where(cloud_m0 > 0, cloud_m1 / cloud_m0, 0)
@@ -122,7 +107,21 @@ def read_distr(outfile, z_distr):
         initial_distr = init_distr[np.argmin(np.abs(z))]
         distr1 = distr[np.argmin(np.abs(z - z_distr))]
 
+        print(np.array(f.variables['sd_conc'][:]).squeeze())
         n_tot =  np.array(f.variables['aerosol_m0'][:]).squeeze()
         rhod = np.array(f.variables['rhod'][:]).squeeze()
         print(np.multiply(n_tot, rhod))
     return distr1/1e6, radii*1e6, bin_widths*1e6, initial_distr/1e6, init_radii*1e6, init_bin_widths*1e6
+
+
+def read_dry_distr(outfile):
+    with netcdf.netcdf_file(outfile, 'r') as f:
+        distr = np.array(f.variables['dry_m0'][:]).squeeze()
+        radii = np.array(f.variables['dry_r_dry'][:]).squeeze()
+        bin_widths = np.array(f.variables['dry_dr_dry'][:]).squeeze()
+
+        print(np.array(f.variables['sd_conc'][:]).squeeze())
+        n_tot =  np.array(f.variables['aerosol_m0'][:]).squeeze()
+        rhod = np.array(f.variables['rhod'][:]).squeeze()
+        print(np.multiply(n_tot, rhod))
+    return distr[0]/1e6, radii*1e6, bin_widths*1e6
