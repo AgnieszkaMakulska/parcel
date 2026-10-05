@@ -3,7 +3,7 @@ import sys
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-plt.style.use('seaborn-v0_8')
+plt.style.use('seaborn-v0_8-colorblind')
 from matplotlib.ticker import FixedLocator, FuncFormatter, NullFormatter
 plt.rcParams.update({
     'font.size': 16,

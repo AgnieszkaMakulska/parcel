@@ -10,7 +10,7 @@ from libcloudphxx import common
 def mixed_aerosol(aerosol_str, epsilon):
 
     if aerosol_str == "pristine":
-        return f'{{"pristine":{{"kappa": 0.61, "sol_frac": 1.0, "sd_conc": 100000, "const_multi":0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}, \
+        return f'{{"pristine":{{"kappa": 1.28, "sol_frac": 1.0, "sd_conc": 100000, "const_multi":0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}, \
                     "dust": {{"kappa": 1.28, "sol_frac": {epsilon},  "sd_conc": 200000, "const_multi":0, "mean_r": [0.2495e-6, 1.8965e-6, 5.841e-6], "gstdev": [1.900, 1.364, 1.680], "n_tot": [4.9e6, 0.5005e6, 0.003164e6]}} }}'
 
     elif aerosol_str == "polluted":
@@ -21,7 +21,7 @@ def mixed_aerosol(aerosol_str, epsilon):
 
 def soluble_aerosol(aerosol_str):
     if aerosol_str == "pristine":
-        return '{"pristine": {"kappa": 0.61, "sol_frac": 1.0,  "sd_conc": 100000, "const_multi":0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}'
+        return '{"pristine": {"kappa": 1.28, "sol_frac": 1.0,  "sd_conc": 100000, "const_multi":0, "mean_r": [0.011e-6, 0.06e-6], "gstdev": [1.2, 1.7], "n_tot": [125.0e6, 65.0e6]}}'
     elif aerosol_str == "polluted":
         return '{"polluted": {"kappa": 0.61, "sol_frac": 1.0,  "sd_conc": 100000, "const_multi":0, "mean_r": [0.029e-6, 0.071e-6], "gstdev": [1.36, 1.57], "n_tot": [160.0e6, 380.0e6]}}'
     else:
