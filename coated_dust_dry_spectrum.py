@@ -30,7 +30,8 @@ for aerosol in [sol, dust]:
     distr, radii, bin_widths = cd.read_dry_distr(outfile)
     os.remove(outfile)
 
-    l = "ammonium sulfate" if aerosol==sol else "coated dust"
+    sol_str = "sea salt" if aerosol_str == "pristine" else "ammonium sulfate"
+    l = sol_str if aerosol==sol else "coated dust"
     ax.bar(radii, distr, width=bin_widths, alpha=0.5, label = l, linewidth=2)
 
 ax.set_xscale('log')

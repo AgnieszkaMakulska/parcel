@@ -22,6 +22,8 @@ zmax = 400
 mix = cd.mixed_aerosol(aerosol_str, epsilon)
 sol = cd.soluble_aerosol(aerosol_str)
 
+sol_str = "sea salt" if aerosol_str == "pristine" else "ammonium sulfate"
+
 out_png = "plots/rd_insol/spectrum_" + aerosol_str + ".pdf"
 fig, ax = plt.subplots(2, 2, figsize=(12.0, 10.0), sharey=True, squeeze=False)
 ax = ax.flatten()
@@ -32,7 +34,7 @@ for aerosol in [sol, mix]:
     distr1, radii, bin_widths, initial_distr, init_radii, init_bin_widths = cd.read_distr(outfile, zmax)
     #os.remove(outfile)
 
-    l = "ammonium sulfate" if aerosol==sol else "ammonium sulfate + dust"
+    l = sol_str if aerosol==sol else sol_str + " + dust"
     c = "tab:blue" if aerosol==sol else "tab:orange"
     if aerosol == sol:
         ax[0].bar(init_radii, initial_distr, color=c, edgecolor=c, width=init_bin_widths, alpha=0.4, label = l, linewidth=2)

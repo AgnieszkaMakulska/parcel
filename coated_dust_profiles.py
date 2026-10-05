@@ -18,7 +18,9 @@ aerosol_str = "pristine"
 out_png = "plots/rd_insol/profiles_" + aerosol_str + ".pdf"
 zmax = 400
 
-epsilon_list = [0.001, 0.05, 0.5, 1.]
+sol_str = "sea salt" if aerosol_str == "pristine" else "ammonium sulfate"
+
+epsilon_list = [0.001, 0.05, 0.5, 0.99]
 
 mosaic = [
     ["ax1", "ax1", "ax2", "ax2"],
@@ -29,7 +31,7 @@ ax = list(axd.values())
 
 # no dust
 sol = cd.soluble_aerosol(aerosol_str)
-l = 'sulfate'
+l = sol_str
 outfile = "sol.nc"
 cd.run_scheme(sol, zmax, outfile, outfreq = 1)
 z, rh, liq_mix_ratio, conc, mean_r, std_dev_r = cd.read_profiles(outfile)
@@ -42,10 +44,7 @@ ax[3].plot((rh-1)*100, z, label=l, color="black",linestyle="--")
 # coated dust
 for epsilon in epsilon_list:
     aerosol = cd.mixed_aerosol(aerosol_str, epsilon)
-    if epsilon == 1.0:
-        l = 'sea salt ($\\epsilon$ = 1) + sulfate'
-    else:
-        l = 'dust ($\\epsilon$ = ' + str(round(epsilon, 5)) + ') + sulfate'
+    l = 'dust ($\\epsilon$ = ' + str(round(epsilon, 5)) + ') + ' + sol_str
     outfile = str(epsilon)+".nc"
     cd.run_scheme(aerosol, zmax, outfile, outfreq = 1)
     z, rh, liq_mix_ratio, conc, mean_r, std_dev_r = cd.read_profiles(outfile)
@@ -60,11 +59,11 @@ ax[2].set_ylabel('z [m]')
 ax[0].set_xlabel('droplet concentration [1/mg]')
 ax[1].set_xlabel('droplet mean radius [$\\mu$m]')
 ax[2].set_xlabel('std. dev. of droplet radius [$\\mu$m]')
-ax[3].set_xlabel('Supersaturation [%]')
+ax[3].set_xlabel('supersaturation [%]')
 
 if aerosol_str == "pristine":
-    ax[0].set_xlim(57.5,63.) # w 1
-    ax[3].set_xlim(0.6,0.8)
+    ax[0].set_xlim(63,69) # w 1
+    ax[3].set_xlim(0.6,0.77)
     ax[3].set_ylim(50,120)
     #ax[0].set_xlim(57,100) # w 2.5
     #ax[1].set_xlim(0.0,1.5)
